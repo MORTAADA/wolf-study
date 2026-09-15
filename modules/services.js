@@ -29,6 +29,6 @@
     router:router,
     renderer:renderer,
     controllers:controllers,
-    version:'61.5'
+    version:'61.6'
   };
 })();
