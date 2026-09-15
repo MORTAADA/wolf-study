@@ -1039,7 +1039,70 @@ function wwSmartFocusCandidates(){
 }
 function wwSmartFocusStart(){var candidates=wwSmartFocusCandidates();if(!wwFocusTopicId&&candidates.length)wwFocusTopicId=candidates[0].topic.id;try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId)}catch(e){};if(!pomodoro.isRunning)startPomodoro();}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
-function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.2</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
+
+/* V62.3: Focus context — visible proof of what the timer is associated with. */
+function wwFocusContextData(){
+  try{
+    var p=window.wwFocusState || window.focusState || null;
+    var linked = p && (p.topicId || p.subjectId || p.taskId || p.missionId || p.label || p.name);
+    var label = p && (p.label || p.name || "");
+    var subject = p && (p.subjectName || p.subject || "");
+    var topic = p && (p.topicName || p.topic || "");
+    var task = p && (p.taskName || p.task || "");
+    if(!label && topic) label=topic;
+    if(!label && task) label=task;
+    if(!label && subject) label=subject;
+    return {
+      linked: !!linked,
+      label: label || "",
+      subject: subject || "",
+      topic: topic || "",
+      task: task || "",
+      source: (p && p.source) || (p && p.missionId ? "mission" : "focus")
+    };
+  }catch(e){ return {linked:false,label:"",subject:"",topic:"",task:"",source:"focus"}; }
+}
+
+function wwRenderFocusContext(){
+  var d=wwFocusContextData();
+  var el=document.getElementById("wwFocusContext");
+  if(!el) return;
+  var state = d.linked ? "active" : "free";
+  var badge = d.linked ? "🎯 FOCUS · ACTIVE" : "⚪ MODE LIBRE";
+  var title = d.label || "Aucune matière ou tâche associée";
+  var sub = d.linked
+    ? ("Session liée à " + (d.task ? "la tâche" : "votre Focus") + " ✓")
+    : "Cette session ne sera pas associée à une matière ou une tâche.";
+  el.innerHTML =
+    '<div class="ww-focus-context__top">'+
+      '<div class="ww-focus-badge"><span class="ww-focus-dot '+state+'"></span>'+badge+'</div>'+
+      '<span class="ww-focus-link">'+(d.linked ? "🔗 Liée" : "Libre")+'</span>'+
+    '</div>'+
+    '<div class="ww-focus-context__title">'+(title||"—")+'</div>'+
+    '<div class="ww-focus-context__sub">'+sub+'</div>'+
+    '<div class="ww-focus-context__meta">'+
+      (d.subject ? '<span class="ww-focus-chip">📚 '+d.subject+'</span>' : '')+
+      (d.topic ? '<span class="ww-focus-chip">📖 '+d.topic+'</span>' : '')+
+      (d.task ? '<span class="ww-focus-chip">📋 '+d.task+'</span>' : '')+
+    '</div>';
+}
+
+function wwEnsureFocusContext(){
+  var timer = document.getElementById("pomodoroTimer") ||
+              document.querySelector(".pomodoro-timer") ||
+              document.querySelector('[id*="pomodoro"]');
+  if(!timer) return;
+  var el=document.getElementById("wwFocusContext");
+  if(!el){
+    el=document.createElement("div");
+    el.id="wwFocusContext";
+    el.className="ww-focus-context";
+    timer.parentElement && timer.parentElement.insertBefore(el,timer);
+  }
+  wwRenderFocusContext();
+}
+
+function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.3</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1608,3 +1671,12 @@ window.WWResourceAPI={
 };
 
 })();
+
+/* V62.3 refresh hooks */
+document.addEventListener("DOMContentLoaded", function(){ setTimeout(wwEnsureFocusContext, 0); });
+var wwFocusContextRefreshTimer = null;
+var wwFocusContextObserver = new MutationObserver(function(){
+  clearTimeout(wwFocusContextRefreshTimer);
+  wwFocusContextRefreshTimer=setTimeout(wwEnsureFocusContext, 120);
+});
+try{ wwFocusContextObserver.observe(document.body,{childList:true,subtree:true}); }catch(e){}
