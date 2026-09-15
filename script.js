@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-// V62.0 Dependency Container — application code consumes stable service contracts.
+// V62.3 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
 if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
@@ -390,7 +390,7 @@ async function getPersistentFile(handle){
    Persistent FileSystemFileHandle is stored; file bytes stay
    in phone storage. Reader uses an object URL only while open.
    ========================================================= */
-/* V62.0 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
+/* V62.3 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
 async function wwOpenResourceInApp(sid,rid){
   var r=null;
   Object.keys(state.resources[sid]||{}).some(function(f){
@@ -1016,83 +1016,8 @@ function renderIntelligenceBrief(){
 
 function wwFocusTopic(){return state.topics.find(function(t){return t.id===wwFocusTopicId})||null}
 function wwSetFocusTopic(id){wwFocusTopicId=id||'';try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){};render()}
-function wwSmartFocusCandidates(){
-  var mission=wwMissionItems().filter(function(x){return !x.done}).map(function(x){return String(x.text||'').toLowerCase()});
-  if(!mission.length)mission=wwMissionItems().map(function(x){return String(x.text||'').toLowerCase()});
-  var topics=state.topics.map(function(t){
-    var sub=state.subjects.find(function(x){return x.id===t.subject_id});
-    var title=String(t.title||'').toLowerCase();
-    var subname=sub?String(sub.name||'').toLowerCase():'';
-    var score=0;
-    mission.forEach(function(m){
-      var words=m.split(/[^\p{L}\p{N}]+/u).filter(function(w){return w.length>=4});
-      words.forEach(function(w){
-        if(title.indexOf(w)>=0)score+=5;
-        if(subname.indexOf(w)>=0)score+=2;
-      });
-    });
-    var p=getProgress(t.id);
-    score+=(4-(p.level||0))*1.5;
-    return{topic:t,score:score};
-  }).sort(function(a,b){return b.score-a.score});
-  return topics.slice(0,5);
-}
-function wwSmartFocusStart(){var candidates=wwSmartFocusCandidates();if(!wwFocusTopicId&&candidates.length)wwFocusTopicId=candidates[0].topic.id;try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId)}catch(e){};if(!pomodoro.isRunning)startPomodoro();}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
-
-/* V62.5: Focus context — visible proof of what the timer is associated with. */
-function wwFocusContextData(){
-  try{
-    var topic=wwFocusTopic();
-    var subject=topic?state.subjects.find(function(x){return x.id===topic.subject_id}):null;
-    var missionItems=wwMissionItems();
-    var missionTask=missionItems.find(function(x){
-      var txt=String(x.text||'').toLowerCase();
-      return topic && (txt.indexOf(String(topic.title||'').toLowerCase())>=0 || (subject && txt.indexOf(String(subject.name||'').toLowerCase())>=0));
-    });
-    var linked=!!topic;
-    return {
-      linked:linked,
-      label:topic?topic.title:'',
-      subject:subject?subject.name:'',
-      topic:topic?topic.title:'',
-      task:missionTask?String(missionTask.text||'').replace(/^[📚📖🎯⚡▶️\s]+/,'').trim():'',
-      source:missionTask?'mission':'focus'
-    };
-  }catch(e){ return {linked:false,label:'',subject:'',topic:'',task:'',source:'focus'}; }
-}
-
-function wwRenderFocusContext(){
-  var d=wwFocusContextData();
-  var el=document.getElementById('wwFocusContext');
-  if(!el)return;
-  var stateClass=d.linked?(pomodoro.isRunning?'active':'ready'):'free';
-  var badge=d.linked?(pomodoro.isRunning?(pomodoro.isBreak?'🎯 FOCUS · PAUSE':'🎯 FOCUS · ACTIVE'):'🎯 FOCUS · PRÊT'):'⚪ MODE LIBRE';
-  var sub=d.linked
-    ? (pomodoro.isRunning ? 'Cette session Pomodoro est actuellement liée à ce Focus.' : 'Le prochain Pomodoro sera enregistré sur ce Focus.')
-    : 'Sélectionne un chapitre ci-dessus pour lier le minuteur à ta progression.';
-  el.innerHTML=
-    '<div class="ww-focus-context__top">'+
-      '<div class="ww-focus-badge"><span class="ww-focus-dot '+stateClass+'"></span>'+badge+'</div>'+
-      '<span class="ww-focus-link">'+(d.linked?'🔗 Session liée':'Libre')+'</span>'+
-    '</div>'+
-    (d.linked
-      ? '<div class="ww-focus-context__title">'+d.label+'</div>'+
-        '<div class="ww-focus-context__meta">'+
-          (d.subject?'<span class="ww-focus-chip">📚 '+d.subject+'</span>':'')+
-          '<span class="ww-focus-chip">📖 '+d.topic+'</span>'+
-          (d.task?'<span class="ww-focus-chip">📋 Mission: '+d.task+'</span>':'')+
-        '</div>'
-      : '<div class="ww-focus-context__title">Aucun Focus associé</div>')+
-    '<div class="ww-focus-context__sub">'+sub+'</div>';
-}
-
-function wwEnsureFocusContext(){
-  var el=document.getElementById('wwFocusContext');
-  if(el)wwRenderFocusContext();
-}
-
-function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.5</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
+function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V62.3</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1134,7 +1059,7 @@ function renderDashboard(){
       (tasks.length?tasks.map(function(t){return '<div class="task-item"><div class="task-left"><div class="task-text">'+t.text+'</div><div class="task-meta">'+(t.time||'')+' • '+t.priority+'</div></div><div class="task-right"><span class="task-priority '+t.priority+'">'+t.priority+'</span><button class="btn-small btn-outline" data-task-done="'+t.id+'">✅</button><button class="btn-small btn-outline" data-task-delete="'+t.id+'">🗑️</button></div></div>'}).join(''):'<div class="text-muted text-small">Aucune tâche.</div>')+
     '</div>'+
     (hasRev&&state.settings.showSmartRevision?'<div class="card"><div class="card-title">🧠 À réviser <span class="badge">'+Object.keys(rev).reduce(function(a,k){return a+rev[k].length},0)+'</span></div>'+Object.keys(rev).map(function(sid){var items=rev[sid];var s=state.subjects.find(function(x){return x.id===sid});return '<div class="revision-group"><div class="revision-group-header" data-group-toggle="'+sid+'"><div><span class="group-title">📖 '+(s?s.name:'Matière')+'</span><span class="group-meta"> • '+items.length+'</span></div><span class="group-meta">▼</span></div><div class="revision-group-body" id="body-'+sid+'">'+items.map(function(r){return '<div class="revision-item"><div><div class="name">'+r.title+'</div><div class="sub">📅 '+r.daysSinceLastStudy+' jours · Niveau '+r.level+'/4</div></div><button class="btn-small btn-outline" data-session-topic="'+r.topicId+'">🔄</button></div>'}).join('')+'</div></div>'}).join('')+'</div>':'')+
-    renderFocusCockpit()+    '<div class="card ww-pomodoro-card '+(wwFocusTopic()?'ww-pomodoro-linked':'ww-pomodoro-free')+'"><div class="card-title ww-pomodoro-title"><span>⏱️ Pomodoro</span><span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div id="wwFocusContext" class="ww-focus-context"></div><div class="ww-pomodoro-label">'+(pomodoro.isRunning?(pomodoro.isBreak?'PAUSE EN COURS':'SESSION EN COURS'):(wwFocusTopic()?'FOCUS PRÊT':'MINUTEUR LIBRE'))+'</div><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><details class="pomo-settings-collapse"><summary>⚙️ Réglage du temps</summary><div class="pomo-settings"><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'><span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></details></div></div>'+
+    renderFocusCockpit()+    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
   '</div>';
 }
 
@@ -1442,12 +1367,39 @@ function renderReviewSession(){
   return '<div class="review-session"><div class="rs-progress"><span>Révision '+(session.currentIdx+1)+'/'+session.errors.length+'</span><span>Révisions: '+err.revisions+'/'+err.max_revisions+'</span></div><div class="rs-question">'+err.description+'</div><div style="font-size:12px;color:#8ba2c0;text-align:center;margin-bottom:12px;">'+meta+'</div>'+(err.correction?'<div class="rs-correction">✅ '+err.correction+'</div>':'')+'<div style="font-size:13px;color:#c8d6e5;text-align:center;margin-bottom:14px;">Maîtrises-tu ?</div><div class="rs-actions"><button class="rs-btn-no" data-review-result="no">❌ Non</button><button class="rs-btn-yes" data-review-result="yes">✅ Oui</button></div><button class="btn-outline btn-small" data-end-review style="width:100%;justify-content:center;margin-top:10px;">Arrêter</button></div>';
 }
 
+function wwScheduleToMinutes(t){var p=String(t||'').split(':');return (+p[0]||0)*60+(+p[1]||0)}
+function wwScheduleDuration(c){return Math.max(0,wwScheduleToMinutes(c.end)-wwScheduleToMinutes(c.start))}
+function wwScheduleSubjectId(subject){var q=String(subject||'').toLowerCase().replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùûü]/g,'u').replace(/[^a-z0-9]+/g,' ').trim();var aliases=[['s1',['spectroscopie moleculaire']],['s2',['spectroscopie atomique']],['s3',['chimie analytique']],['s4',['separation chromat','chromato']],['s5',['analyse des solides']],['s6',['normes et qualite']],['s7',['hygiene securite','hygiene securite et qualite']],['s8',['genie chimique']],['s9',['efficacite energetique']]];for(var i=0;i<aliases.length;i++){for(var j=0;j<aliases[i][1].length;j++){if(q.indexOf(aliases[i][1][j])!==-1)return aliases[i][0]}}return null}
+function wwEmploiNow(){var now=new Date(),day=wwDayKey(),mins=now.getHours()*60+now.getMinutes()+now.getSeconds()/60,classes=COURSE_SCHEDULE.filter(function(c){return c.day===day});for(var i=0;i<classes.length;i++){var c=classes[i],a=wwScheduleToMinutes(c.start),b=wwScheduleToMinutes(c.end);if(mins>=a&&mins<b)return{type:'current',course:c,progress:Math.max(0,Math.min(100,((mins-a)/(b-a))*100)),remaining:Math.max(0,b-mins)}}for(var k=0;k<classes.length;k++){if(wwScheduleToMinutes(classes[k].start)>mins)return{type:'nextToday',course:classes[k],until:wwScheduleToMinutes(classes[k].start)-mins}}return{type:'none'} }
+function wwEmploiNext(){var now=new Date(),todayIndex=now.getDay(),mins=now.getHours()*60+now.getMinutes()+now.getSeconds()/60,order=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];for(var offset=0;offset<7;offset++){var idx=(todayIndex+offset)%7,day=order[idx],classes=COURSE_SCHEDULE.filter(function(c){return c.day===day});for(var i=0;i<classes.length;i++){if(offset>0||wwScheduleToMinutes(classes[i].start)>mins){return{course:classes[i],days:offset,until:offset*1440+wwScheduleToMinutes(classes[i].start)-mins}}}}return null}
+function wwFormatCountdown(mins){mins=Math.max(0,Math.round(mins));if(mins<60)return mins+' min';var h=Math.floor(mins/60),m=mins%60;return h+'h'+(m?' '+String(m).padStart(2,'0')+' min':'')}
+function wwFormatDuration(mins){mins=Math.max(0,Math.round(mins));var h=Math.floor(mins/60),m=mins%60;return h? h+'h'+(m?' '+m+'min':''):m+' min'}
+function wwEmploiDayStats(day){var classes=COURSE_SCHEDULE.filter(function(c){return c.day===day}).sort(function(a,b){return wwScheduleToMinutes(a.start)-wwScheduleToMinutes(b.start)}),total=classes.reduce(function(sum,c){return sum+wwScheduleDuration(c)},0),gaps=[];for(var i=1;i<classes.length;i++){var gap=wwScheduleToMinutes(classes[i].start)-wwScheduleToMinutes(classes[i-1].end);if(gap>0)gaps.push({start:classes[i-1].end,end:classes[i].start,duration:gap})}return{classes:classes,total:total,gaps:gaps}}
+function wwEmploiSubjectProgress(subjectId){if(!subjectId)return null;var tops=state.topics.filter(function(t){return t.subject_id===subjectId});if(!tops.length)return null;var total=tops.reduce(function(s,t){return s+getProgress(t.id).level},0);return Math.round((total/(tops.length*4))*100)}
 function renderEmploi(){
   var days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
   var keys=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-  return '<div><h2 style="font-size:22px;margin-bottom:16px;">📋 Emploi</h2>'+keys.map(function(k,idx){var cls=COURSE_SCHEDULE.filter(function(c){return c.day===k});if(!cls.length)return '<div class="card"><div class="card-title">'+days[idx]+'</div><div class="text-muted text-small">Aucun cours</div></div>';return '<div class="card"><div class="card-title">'+days[idx]+'</div>'+cls.map(function(c){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #111a24;font-size:14px;"><span>'+c.subject+'</span><div style="display:flex;align-items:center;gap:8px;"><span style="color:#6b7f9a;">'+c.start+' - '+c.end+'</span><span style="color:#8ba2c0;font-size:12px;">• '+c.room+'</span></div></div>'}).join('')+'</div>'}).join('')+'</div>';
+  var nowInfo=wwEmploiNow(),next=wwEmploiNext(),today=wwDayKey(),todayIdx=keys.indexOf(today);
+  var mode='week';try{mode=localStorage.getItem('wwEmploiMode')||'week'}catch(e){}
+  var focusDay=(mode==='today'&&todayIdx>=0)?today:null;
+  var visibleKeys=focusDay?[focusDay]:keys;
+  var totalWeek=COURSE_SCHEDULE.reduce(function(s,c){return s+wwScheduleDuration(c)},0),weekCount=COURSE_SCHEDULE.length;
+  var header='<div class="emploi-head"><div class="emploi-kicker">ACADEMIC SCHEDULE</div><div class="flex-between"><div><h2 class="emploi-title">📋 Emploi du temps</h2><div class="emploi-subtitle">Ton rythme réel · cours · pauses · salles</div></div><div class="emploi-live-dot '+(nowInfo.type==='current'?'active':'')+'"></div></div>';
+  var controls='<div class="emploi-controls"><button class="emploi-mode '+(mode==='today'?'active':'')+'" data-emploi-mode="today">📅 Aujourd\'hui</button><button class="emploi-mode '+(mode==='week'?'active':'')+'" data-emploi-mode="week">🗓️ Semaine</button><button class="emploi-mode '+(mode==='room'?'active':'')+'" data-emploi-mode="room">📍 Mode salle</button></div></div>';
+  var status='';
+  if(nowInfo.type==='current'){
+    var cc=nowInfo.course;status='<div class="emploi-now card"><div class="emploi-now-top"><span class="emploi-status-pill live">🟢 EN COURS</span><span>'+Math.ceil(nowInfo.remaining)+' min restantes</span></div><div class="emploi-now-main"><div><div class="emploi-now-subject">'+cc.subject+'</div><div class="emploi-now-meta">'+cc.start+' – '+cc.end+' · '+cc.type+' · 📍 '+cc.room+'</div></div><div class="emploi-progress-ring" style="--p:'+nowInfo.progress+'%"><span>'+Math.round(nowInfo.progress)+'%</span></div></div><div class="emploi-progress"><div style="width:'+nowInfo.progress+'%"></div></div></div>';
+  }else if(next){
+    var nc=next.course;status='<div class="emploi-next card"><div class="emploi-now-top"><span class="emploi-status-pill next">⏳ PROCHAIN</span><span>dans '+wwFormatCountdown(next.until)+'</span></div><div class="emploi-next-main"><div><div class="emploi-now-subject">'+nc.subject+'</div><div class="emploi-now-meta">'+(next.days===0?'Aujourd\'hui':'Dans '+next.days+' jour'+(next.days>1?'s':''))+' · '+nc.start+' – '+nc.end+' · 📍 '+nc.room+'</div></div><div class="emploi-next-arrow">→</div></div></div>';
+  }else{status='<div class="emploi-next card"><div class="emploi-now-top"><span class="emploi-status-pill free">☕ LIBRE</span><span>Aucun cours à venir</span></div><div class="emploi-now-subject">Profite de ton temps libre.</div></div>'}
+  var summary='<div class="emploi-summary"><div class="emploi-stat"><span>📚</span><strong>'+weekCount+'</strong><small>séances</small></div><div class="emploi-stat"><span>⏱️</span><strong>'+wwFormatDuration(totalWeek)+'</strong><small>de cours</small></div><div class="emploi-stat"><span>📅</span><strong>'+((todayIdx>=0)?wwEmploiDayStats(today).classes.length:0)+'</strong><small>aujourd\'hui</small></div><div class="emploi-stat"><span>⏳</span><strong>'+wwFormatDuration(wwEmploiDayStats(today).gaps.reduce(function(s,g){return s+g.duration},0))+'</strong><small>temps libre</small></div></div>';
+  var roomMode=mode==='room';
+  var cards=visibleKeys.map(function(k){var idx=keys.indexOf(k),stats=wwEmploiDayStats(k),classes=stats.classes;if(roomMode&&!focusDay&&k!==today)return '';var isToday=k===today;var dayLabel=days[idx];var dayTag=isToday?'<span class="emploi-today-tag">AUJOURD\'HUI</span>':'';var body='';if(!classes.length){body='<div class="text-muted text-small">Aucun cours</div>'}else{body=classes.map(function(c,i){var subjectId=wwScheduleSubjectId(c.subject),p=wwEmploiSubjectProgress(subjectId),current=nowInfo.type==='current'&&nowInfo.course===c;var typeIcon=c.type==='TP'?'🧪':(c.type==='TD'?'📝':'📚');var detail=''+c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room;return '<button class="emploi-course '+(current?'is-current':'')+'" data-emploi-course="'+detail.replace(/"/g,'&quot;')+'"><div class="emploi-course-left"><div class="emploi-course-title">'+typeIcon+' '+c.subject+'</div><div class="emploi-course-meta"><span class="emploi-type">'+c.type+'</span>'+(p!==null?'<span>Maîtrise '+p+'%</span>':'')+'</div></div><div class="emploi-course-right"><span class="emploi-time">'+c.start+' – '+c.end+'</span><span class="emploi-room">• '+c.room+'</span>'+(current?'<span class="emploi-mini-live">NOW</span>':'')+'</div></button>';}).join('')}
+    var gapInfo=stats.gaps.length?'<div class="emploi-gaps">'+stats.gaps.map(function(g){return '<div class="emploi-gap"><span>⏳ '+g.start+' – '+g.end+'</span><strong>'+wwFormatDuration(g.duration)+'</strong><small>temps libre</small></div>'}).join('')+'</div>':'';
+    return '<section class="emploi-day card '+(isToday?'is-today':'')+'"><div class="emploi-day-head"><div><div class="emploi-day-title">'+dayLabel+' '+dayTag+'</div><div class="emploi-day-meta">'+classes.length+' séance'+(classes.length>1?'s':'')+' · '+wwFormatDuration(stats.total)+'</div></div><div class="emploi-day-total">'+wwFormatDuration(stats.total)+'</div></div>'+body+gapInfo+'</section>';}).join('');
+  var footer='<div class="emploi-tip"><span>💡</span><div><strong>Mode intelligent</strong><p>Le planning reste fixe : White Wolf met en évidence le présent, le prochain cours et tes créneaux libres sans modifier ton emploi.</p></div></div>';
+  return header+controls+status+summary+cards+footer;
 }
-
 function renderResources(){
   var all=getAllResources();var stats=getResourcesStats();var filtered=filterResources(all);
   var header='<div class="res-header"><div class="res-top"><div class="res-icon-main">📚</div><div class="res-title"><h2>Ressources</h2><div class="res-sub">Centralise tes fichiers, liens et temps d’étude</div></div></div><div class="res-stats"><div class="res-stat"><div class="rs-num">'+stats.total+'</div><div class="rs-lbl">Total</div></div><div class="res-stat"><div class="rs-num" style="color:#6ae8a5;">'+stats.studied+'</div><div class="rs-lbl">Étudiées</div></div><div class="res-stat"><div class="rs-num" style="color:#8fb3e6;">'+stats.minutes+' min</div><div class="rs-lbl">Temps d’étude</div></div><div class="res-stat"><div class="rs-num" style="color:#e8cc6a;">'+stats.completion+'%</div><div class="rs-lbl">Progression</div></div></div><div class="res-progress"><div class="res-progress-fill" style="width:'+stats.completion+'%"></div></div></div>';
@@ -1470,6 +1422,7 @@ function renderModal(){
   if(m.type==='examPrep'){return renderExamPreparation(wwFindExam(m.examId))}
   if(m.type==='folder'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📁 Nouveau dossier</h3><div style="display:grid;gap:12px;"><select id="folder-subject"><option value="">Choisir matière</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><input id="folder-name" placeholder="Nom du dossier"></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-folder>Enregistrer</button></div></div></div>'}
   if(m.type==='resource'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📚 Nouvelle ressource</h3><div style="display:grid;gap:12px;"><select id="resource-subject"><option value="">Choisir matière</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><input id="resource-title" placeholder="Titre"><div class="res-input-label">🔗 Lien direct (optionnel)</div><input id="resource-url" placeholder="https://..." type="url"><div class="res-or">— ou —</div><div class="res-input-label">📥 Fichier sur le téléphone</div><button type="button" class="btn-outline" data-pick-resource-file>Choisir un fichier depuis le stockage</button><div id="resource-file-name" class="text-muted text-small">Aucun fichier sélectionné</div><input id="resource-file" type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.mp4,.webm,.ppt,.pptx" style="display:none"><div class="text-muted text-small">Le fichier reste local. Si le navigateur le permet, White Wolf conserve une référence au fichier; sinon, une copie locale est stockée dans IndexedDB.</div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-resource>✅ Enregistrer</button></div></div></div>'}
+  if(m.type==='emploiCourse'){var parts=String(m.data||'').split('|'),sub=parts[0]||'Cours',start=parts[1]||'',end=parts[2]||'',type=parts[3]||'Cours',room=parts[4]||'',sid=wwScheduleSubjectId(sub),master=state.subjects.find(function(x){return x.id===sid}),prog=wwEmploiSubjectProgress(sid);return '<div class="modal-overlay"><div class="modal-content emploi-detail-modal"><span class="close-btn" data-close-modal>❌</span><div class="emploi-detail-icon">'+(type==='TP'?'🧪':type==='TD'?'📝':'📚')+'</div><h3>'+sub+'</h3><div class="emploi-detail-grid"><div><span>🕐 Horaire</span><strong>'+start+' – '+end+'</strong></div><div><span>📍 Salle</span><strong>'+room+'</strong></div><div><span>🏷️ Type</span><strong>'+type+'</strong></div><div><span>🎯 Maîtrise</span><strong>'+(prog===null?'—':prog+'%')+'</strong></div></div>'+(master?'<div class="emploi-master-link"><span>📚 Matière liée</span><strong>'+master.name+'</strong><small>'+master.code+' · '+master.credits+' crédits</small></div>':'<div class="emploi-master-link muted">Aucune matière Master automatiquement associée.</div>')+'<div class="modal-actions">'+(master?'<button class="btn-primary" data-route="subject" data-subject-id="'+master.id+'">Ouvrir la matière →</button>':'')+'<button class="btn-outline" data-close-modal>Fermer</button></div></div></div>'}
   if(m.type==='resourceTime'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>⏱️ Enregistrer le temps</h3><div style="display:grid;gap:12px;"><label>Minutes étudiées</label><input id="resource-time-min" type="number" min="1" max="1440" value="30" autofocus></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-resource-time data-sid="'+m.subjectId+'" data-rid="'+m.resourceId+'">✅ Enregistrer</button></div></div></div>'}
   if(m.type==='session'){var today3=wwLocalDateISO(new Date());var tid=m.topicId;return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📚 Session</h3><div style="display:grid;gap:12px;"><div><label>📅 Date</label><input type="date" id="session-date" value="'+today3+'"></div><div><label>⏱️ Durée (min)</label><input type="number" id="session-duration" value="30" min="5" max="240"></div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-session="'+tid+'">Enregistrer</button></div></div></div>'}
   if(m.type==='progDetail'){var t=PROGRAMMING_TOPICS.find(function(x){return x.id===m.topicId});if(!t)return '';return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>'+t.icon+' '+t.title+'</h3><div class="what-learn"><h4>💡 ما ستتعلمه:</h4><ul>'+t.learn.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div><div class="modal-actions"><button class="btn-primary" data-close-modal>Fermer</button></div></div></div>'}
@@ -1528,7 +1481,9 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pomo-stop]').forEach(function(el){el.onclick=stopPomodoro});
   document.querySelectorAll('[data-pomo-reset]').forEach(function(el){el.onclick=resetPomodoro});
   document.querySelectorAll('[data-pomo-apply]').forEach(function(el){el.onclick=applyPomodoroSettings});
-  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var sel=document.getElementById('ww-focus-topic');wwSetFocusTopic(sel?sel.value:'')};document.querySelectorAll('[data-focus-start]').forEach(function(el){el.onclick=wwSmartFocusStart});
+  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var sel=document.getElementById('ww-focus-topic');wwSetFocusTopic(sel?sel.value:'')};
+  document.querySelectorAll('[data-emploi-mode]').forEach(function(el){el.onclick=function(){var mode=this.dataset.emploiMode;try{localStorage.setItem('wwEmploiMode',mode)}catch(e){}render()}});
+  document.querySelectorAll('[data-emploi-course]').forEach(function(el){el.onclick=function(){state.modal={type:'emploiCourse',data:this.dataset.emploiCourse};render()}});
   document.querySelectorAll('[data-group-toggle]').forEach(function(el){el.onclick=function(){var b=document.getElementById('body-'+this.dataset.groupToggle);if(b)b.classList.toggle('open')}});
   document.querySelectorAll('[data-stats-tab]').forEach(function(el){el.onclick=function(){state.statsTab=this.dataset.statsTab;state.reviewSession=null;render()}});
   document.querySelectorAll('[data-intel-stats]').forEach(function(el){el.onclick=function(e){e.stopPropagation();state.statsTab=this.dataset.intelStats||'overview';state.reviewSession=null;state.route='stats';render()}});
@@ -1553,7 +1508,7 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=function(){
     var input=document.getElementById('resource-file');
     if(!input){showToast('Sélecteur de fichier indisponible');return;}
-    // V62.0 Android/PWA fix: open the native <input type=file> directly from
+    // V62.3 Android/PWA fix: open the native <input type=file> directly from
     // the user gesture. Waiting for showOpenFilePicker() and then calling
     // input.click() loses Android's user-activation token, so the fallback
     // picker may silently do nothing. The native picker is the most reliable
@@ -1587,6 +1542,7 @@ var wwChatbot=window.WWChatbot?WWChatbot.create({messages:chatMsgs,input:chatInp
 if(wwChatbot)wwChatbot.init();
 
 setInterval(function(){if(state.onboardingDone){updateNotifications()}},60000);
+setInterval(function(){if(state.route==='emploi'&&state.onboardingDone){render()}},30000);
 
 wwInitPWA();
 if(window.WWQA)WWQA.init();
@@ -1650,8 +1606,8 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'62.0',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:62.0,schemaVersion:3};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'62.3',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:62.3,schemaVersion:3};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
 window.WWResourceAPI={
   getAllResources:getAllResources,
@@ -1661,6 +1617,3 @@ window.WWResourceAPI={
 };
 
 })();
-
-/* V62.5 refresh hooks */
-document.addEventListener('DOMContentLoaded',function(){setTimeout(wwEnsureFocusContext,0);});

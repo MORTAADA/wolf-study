@@ -1404,7 +1404,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 }
 
 /* WHITE WOLF V62 — Focus Session cockpit */
-.ww-focus-cockpit{background:linear-gradient(135deg,#142131,#101820);border:1px solid rgba(90,150,220,.18)}
+.ww-focus-cockpit{background:linear-gradient(135deg,#142131,#101820);border:1px solid rgba(90,150,220,.18);content-visibility:visible!important;contain:none!important;}
 .ww-focus-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .ww-focus-sub{font-size:12px;color:#8ba2c0;margin-top:4px;line-height:1.45}
 .ww-focus-badge{font-size:10px;font-weight:800;letter-spacing:.08em;padding:5px 8px;border-radius:999px;background:rgba(75,123,236,.14);color:#8fb3e6}
@@ -1415,92 +1415,80 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .ww-focus-empty{margin-top:10px;color:#70849f;font-size:11px}
 @media(max-width:420px){.ww-focus-row{flex-direction:column}.ww-focus-row .btn-primary{width:100%}}
 
-/* V62.5 FOCUS CONTEXT UI */
+/* WHITE WOLF V62.3 — Focus Session visibility fix
+   The V55 mobile performance rule applies content-visibility:auto to cards.
+   Focus Session is interactive and must always render its inner controls. */
+.ww-focus-cockpit{display:block;min-height:0;overflow:visible;}
+.ww-focus-head .card-title{margin-bottom:0;}
+@media(max-width:520px){
+  .ww-focus-cockpit{padding:14px!important;margin-top:12px!important;margin-bottom:14px!important;}
+  .ww-focus-head{align-items:center;}
+  .ww-focus-sub{font-size:11px;}
+  .ww-focus-row{margin-top:11px;}
+}
 
-/* V62.5 FOCUS CONTEXT UI */
-.ww-focus-context{
-  margin:10px 0 14px;
-  padding:12px 14px;
-  border:1px solid rgba(106,232,165,.22);
-  border-radius:16px;
-  background:rgba(10,14,20,.42);
-}
-.ww-focus-context__top{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:10px;margin-bottom:9px;
-}
-.ww-focus-badge{
-  display:inline-flex;align-items:center;gap:7px;
-  font-weight:800;font-size:.78rem;letter-spacing:.04em;
-  text-transform:uppercase;
-}
-.ww-focus-dot{
-  width:8px;height:8px;border-radius:50%;display:inline-block;
-}
-.ww-focus-dot.active{background:#6ae8a5;box-shadow:0 0 10px rgba(106,232,165,.55)}
-.ww-focus-dot.recommended{background:#4b7bec;box-shadow:0 0 10px rgba(75,123,236,.55)}
-.ww-focus-dot.free{background:#94a3b8}
-.ww-focus-link{
-  font-size:.74rem;opacity:.72;
-}
-.ww-focus-context__title{
-  font-size:.95rem;font-weight:850;margin-bottom:5px;
-}
-.ww-focus-context__sub{
-  font-size:.8rem;line-height:1.45;opacity:.8;
-}
-.ww-focus-context__meta{
-  display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;
-}
-.ww-focus-chip{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:5px 8px;border-radius:999px;
-  background:rgba(255,255,255,.045);
-  font-size:.72rem;
-}
-.ww-focus-done{
-  margin-top:12px;padding:12px;border-radius:14px;
-  border:1px solid rgba(106,232,165,.25);
-}
-.ww-focus-done strong{display:block;margin-bottom:5px}
-.ww-focus-done__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-
-/* V62.5 — Focus Mode / Pomodoro premium UX */
-.ww-pomodoro-card{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(10,20,32,.98),rgba(6,14,23,.98));border:1px solid rgba(75,123,236,.20)}
-.ww-pomodoro-linked{border-color:rgba(106,232,165,.22);box-shadow:0 18px 50px rgba(0,0,0,.18),0 0 0 1px rgba(106,232,165,.025) inset}
-.ww-pomodoro-linked:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#6ae8a5,#4b7bec);opacity:.9}
-.ww-pomodoro-title{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:10px}
-.ww-pomodoro-label{font-size:10px;font-weight:800;letter-spacing:.16em;color:#7f97b5;text-align:center;margin:4px 0 2px;text-transform:uppercase}
-.ww-pomodoro-linked .ww-pomodoro-label{color:#6ae8a5}
-.ww-pomodoro-card .timer-display{font-size:clamp(52px,8vw,72px);line-height:1.05;text-shadow:0 8px 28px rgba(0,0,0,.28);margin:8px 0 14px}
-.ww-pomodoro-card .timer-controls{margin:0 0 18px}
-.ww-focus-context{margin:2px auto 12px;max-width:650px;padding:13px 15px;border:1px solid rgba(106,232,165,.20);border-radius:16px;background:linear-gradient(135deg,rgba(106,232,165,.055),rgba(75,123,236,.045));box-shadow:0 10px 30px rgba(0,0,0,.12)}
-.ww-focus-context__top{margin-bottom:7px}
-.ww-focus-badge{color:#dcecff}
-.ww-focus-link{font-size:.70rem;color:#8ba2c0}
-.ww-focus-dot.ready{background:#4b7bec;box-shadow:0 0 10px rgba(75,123,236,.5)}
-.ww-focus-context__title{font-size:14px;line-height:1.3;color:#f0f6ff;margin-bottom:7px}
-.ww-focus-context__sub{font-size:11px;color:#8ba2c0;line-height:1.4}
-.ww-focus-context__meta{margin-top:8px}
-.ww-focus-chip{border:1px solid rgba(139,162,192,.10);background:rgba(255,255,255,.035);color:#b9cbe0}
-.pomo-settings-collapse{max-width:650px;margin:4px auto 0;border:1px solid rgba(139,162,192,.13);border-radius:14px;background:rgba(255,255,255,.018);overflow:hidden;text-align:left}
-.pomo-settings-collapse summary{cursor:pointer;list-style:none;padding:11px 13px;color:#9eb3cc;font-size:11px;font-weight:700;text-align:center;user-select:none}
-.pomo-settings-collapse summary::-webkit-details-marker{display:none}
-.pomo-settings-collapse summary:after{content:"＋";margin-left:7px;opacity:.65}
-.pomo-settings-collapse[open] summary:after{content:"−"}
-.pomo-settings-collapse .pomo-settings{border-top:1px solid rgba(139,162,192,.10);padding:12px 13px}
-.pomo-settings-collapse .pomo-settings-title{display:none}
-.pomo-free-toggle{display:flex!important;align-items:flex-start;gap:9px;line-height:1.4;margin-top:10px!important;color:#8ba2c0!important}
-.pomo-free-toggle input{margin-top:2px;flex:0 0 auto}
-@media(max-width:600px){
-  .ww-pomodoro-card .timer-display{font-size:clamp(48px,16vw,64px)}
-  .ww-focus-context{padding:12px;margin-left:0;margin-right:0}
-  .ww-focus-context__meta{gap:5px}
-  .ww-focus-chip{max-width:100%;white-space:normal}
-  .pomo-settings-collapse .pomo-duration-grid{grid-template-columns:1fr 1fr}
-}
-@media(max-width:420px){
-  .ww-pomodoro-card .timer-controls{gap:7px}
-  .ww-pomodoro-card .timer-controls button{padding:8px 12px}
-  .pomo-settings-collapse .pomo-duration-grid{grid-template-columns:1fr}
-}
+/* ============================================================
+   V62.3 — EMPLOI DU TEMPS 2.0
+   Mobile-first academic schedule intelligence
+   ============================================================ */
+.emploi-head{margin-bottom:14px}
+.emploi-kicker{font-size:10px;letter-spacing:2px;color:#4f6b8d;font-weight:700;margin-bottom:5px}
+.emploi-title{font-size:22px;margin:0;color:#e2e8f0}
+.emploi-subtitle{font-size:12px;color:#6b7f9a;margin-top:4px}
+.emploi-live-dot{width:10px;height:10px;border-radius:50%;background:#273448;box-shadow:0 0 0 4px rgba(39,52,72,.22);margin-right:5px}
+.emploi-live-dot.active{background:#6ae8a5;box-shadow:0 0 0 4px rgba(106,232,165,.12),0 0 12px rgba(106,232,165,.55)}
+.emploi-controls{display:flex;gap:7px;margin:12px 0 16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.emploi-controls::-webkit-scrollbar{display:none}
+.emploi-mode{white-space:nowrap;border:1px solid #223044;background:#0d1722;color:#7187a4;padding:8px 11px;border-radius:11px;font-size:12px}
+.emploi-mode.active{border-color:#3d6797;background:#14253a;color:#b8d0ee;box-shadow:0 0 0 1px rgba(75,123,236,.12)}
+.emploi-now,.emploi-next{padding:15px;margin-bottom:12px;background:linear-gradient(135deg,rgba(14,29,44,.96),rgba(10,20,31,.96));border-color:rgba(68,116,169,.3)}
+.emploi-now-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:#6f85a2;margin-bottom:10px}
+.emploi-status-pill{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:700;letter-spacing:.5px}
+.emploi-status-pill.live{background:rgba(106,232,165,.1);color:#6ae8a5;border:1px solid rgba(106,232,165,.22)}
+.emploi-status-pill.next{background:rgba(75,123,236,.12);color:#8fb3e6;border:1px solid rgba(75,123,236,.24)}
+.emploi-status-pill.free{background:rgba(107,127,154,.1);color:#8ba2c0;border:1px solid rgba(107,127,154,.2)}
+.emploi-now-main,.emploi-next-main{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.emploi-now-subject{font-size:17px;font-weight:650;color:#e7edf7;line-height:1.3}
+.emploi-now-meta{font-size:11px;color:#7187a4;margin-top:5px;line-height:1.5}
+.emploi-progress{height:5px;background:#172536;border-radius:99px;overflow:hidden;margin-top:12px}
+.emploi-progress>div{height:100%;background:linear-gradient(90deg,#4b7bec,#6ae8a5);border-radius:99px;transition:width .5s linear}
+.emploi-progress-ring{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none;background:conic-gradient(#6ae8a5 var(--p),#1c2a3b 0);position:relative}
+.emploi-progress-ring:after{content:"";position:absolute;inset:5px;border-radius:50%;background:#0d1722}
+.emploi-progress-ring span{position:relative;z-index:1;font-size:10px;font-weight:700;color:#bfe9d1}
+.emploi-next-arrow{font-size:28px;color:#5277a6}
+.emploi-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+.emploi-stat{background:#0d1722;border:1px solid #1b2a3d;border-radius:13px;padding:10px 11px;display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}
+.emploi-stat span{grid-row:span 2;font-size:18px}
+.emploi-stat strong{font-size:15px;color:#dce7f5}
+.emploi-stat small{font-size:10px;color:#647b98}
+.emploi-day{padding:0;overflow:hidden;margin-bottom:14px;background:linear-gradient(145deg,#0d1824,#0a141f);border-color:#1b2d42}
+.emploi-day.is-today{border-color:rgba(75,123,236,.42);box-shadow:0 0 0 1px rgba(75,123,236,.08),0 12px 35px rgba(0,0,0,.15)}
+.emploi-day-head{display:flex;justify-content:space-between;align-items:center;padding:15px 15px 10px;border-bottom:1px solid #172536}
+.emploi-day-title{font-size:16px;font-weight:700;color:#cdd9e8;display:flex;align-items:center;gap:8px}
+.emploi-today-tag{font-size:8px;letter-spacing:.7px;padding:3px 6px;border-radius:999px;background:rgba(75,123,236,.14);border:1px solid rgba(75,123,236,.25);color:#8fb3e6}
+.emploi-day-meta{font-size:10px;color:#607793;margin-top:3px}
+.emploi-day-total{font-size:11px;color:#7890ad;font-variant-numeric:tabular-nums}
+.emploi-course{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:10px;padding:12px 15px;border-radius:0;border-bottom:1px solid #132131;background:transparent}
+.emploi-course:last-of-type{border-bottom:0}
+.emploi-course:active{background:#132235;transform:none}
+.emploi-course.is-current{background:linear-gradient(90deg,rgba(106,232,165,.08),transparent);box-shadow:inset 3px 0 0 #6ae8a5}
+.emploi-course-left{min-width:0;flex:1}
+.emploi-course-title{font-size:13px;color:#e2e8f0;white-space:normal;line-height:1.35}
+.emploi-course-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:9px;color:#607793}
+.emploi-type{padding:2px 6px;border-radius:5px;background:#142235;color:#7896b9}
+.emploi-course-right{display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap}
+.emploi-time{font-size:11px;color:#8298b4;font-variant-numeric:tabular-nums}
+.emploi-room{font-size:10px;color:#6e86a4;max-width:92px;overflow:hidden;text-overflow:ellipsis}
+.emploi-mini-live{font-size:8px;font-weight:800;color:#6ae8a5;border:1px solid rgba(106,232,165,.25);padding:2px 5px;border-radius:999px}
+.emploi-gaps{padding:0 15px 8px}
+.emploi-gap{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px 10px;margin-top:6px;border:1px dashed #24364b;border-radius:9px;background:rgba(8,17,27,.55);color:#657e9b}
+.emploi-gap span{font-size:10px}.emploi-gap strong{font-size:10px;color:#8da6c4}.emploi-gap small{grid-column:1/-1;font-size:9px;color:#4f6681}
+.emploi-tip{display:flex;gap:10px;padding:13px 14px;margin-top:4px;border:1px solid #1b2b3d;border-radius:14px;background:#0d1722;color:#7288a4}
+.emploi-tip>span{font-size:18px}.emploi-tip strong{font-size:12px;color:#a9bdd5}.emploi-tip p{font-size:10px;line-height:1.55;margin-top:3px}
+.emploi-detail-modal .emploi-detail-icon{font-size:34px;margin-bottom:6px}
+.emploi-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+.emploi-detail-grid>div{padding:10px;border:1px solid #1c2b3c;border-radius:11px;background:#0d1722}
+.emploi-detail-grid span{display:block;font-size:10px;color:#607793;margin-bottom:4px}.emploi-detail-grid strong{font-size:12px;color:#dce6f3}
+.emploi-master-link{display:flex;flex-direction:column;gap:3px;padding:12px;border:1px solid rgba(75,123,236,.22);background:rgba(75,123,236,.07);border-radius:12px;margin-top:4px}
+.emploi-master-link span{font-size:10px;color:#6f86a5}.emploi-master-link strong{font-size:13px;color:#c8d8ed}.emploi-master-link small{font-size:10px;color:#7187a4}.emploi-master-link.muted{font-size:11px;color:#667d99}
+@media(min-width:700px){.emploi-summary{grid-template-columns:repeat(4,1fr)}.emploi-course{padding:13px 17px}.emploi-course-title{font-size:14px}.emploi-detail-grid{grid-template-columns:repeat(4,1fr)}}
