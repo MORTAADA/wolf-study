@@ -1415,7 +1415,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .ww-focus-empty{margin-top:10px;color:#70849f;font-size:11px}
 @media(max-width:420px){.ww-focus-row{flex-direction:column}.ww-focus-row .btn-primary{width:100%}}
 
-/* WHITE WOLF V62.3 — Focus Session visibility fix
+/* WHITE WOLF V62.4 — Focus Session visibility fix
    The V55 mobile performance rule applies content-visibility:auto to cards.
    Focus Session is interactive and must always render its inner controls. */
 .ww-focus-cockpit{display:block;min-height:0;overflow:visible;}
@@ -1428,7 +1428,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 }
 
 /* ============================================================
-   V62.3 — EMPLOI DU TEMPS 2.0
+   V62.4 — EMPLOI DU TEMPS 2.0
    Mobile-first academic schedule intelligence
    ============================================================ */
 .emploi-head{margin-bottom:14px}
@@ -1492,3 +1492,51 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .emploi-master-link{display:flex;flex-direction:column;gap:3px;padding:12px;border:1px solid rgba(75,123,236,.22);background:rgba(75,123,236,.07);border-radius:12px;margin-top:4px}
 .emploi-master-link span{font-size:10px;color:#6f86a5}.emploi-master-link strong{font-size:13px;color:#c8d8ed}.emploi-master-link small{font-size:10px;color:#7187a4}.emploi-master-link.muted{font-size:11px;color:#667d99}
 @media(min-width:700px){.emploi-summary{grid-template-columns:repeat(4,1fr)}.emploi-course{padding:13px 17px}.emploi-course-title{font-size:14px}.emploi-detail-grid{grid-template-columns:repeat(4,1fr)}}
+
+/* WHITE WOLF V62.4 — EMPLOI LIVE SCHEDULE */
+.emploi-date{font-size:10px;color:#58708f;margin-top:7px;text-transform:capitalize}
+.emploi-live-clock{margin-top:9px;font-size:10px;color:#7390ad;display:flex;align-items:center;gap:5px}
+.emploi-upcoming{margin:0 0 12px;padding:10px 12px;border:1px solid #1b2b3d;border-radius:14px;background:linear-gradient(145deg,#0d1824,#0a141f)}
+.emploi-upcoming.empty{padding-bottom:11px}
+.emploi-mini-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;color:#6f89a8;font-size:9px;letter-spacing:1px;font-weight:800}
+.emploi-mini-head small{font-size:9px;letter-spacing:0;color:#526b88;font-weight:500}
+.emploi-upcoming-item{width:100%;display:flex;align-items:center;gap:9px;text-align:left;background:transparent;border:0;border-top:1px solid #152538;padding:9px 0;color:inherit}
+.emploi-upcoming-item:first-of-type{border-top:0}
+.emploi-upcoming-index{width:21px;height:21px;border-radius:7px;display:grid;place-items:center;flex:none;background:#14253a;border:1px solid #24415f;color:#86a8d1;font-size:9px;font-weight:800}
+.emploi-upcoming-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.emploi-upcoming-main strong{font-size:11px;color:#dce6f2;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emploi-upcoming-main small{font-size:9px;color:#607996;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emploi-upcoming-count{font-size:9px;color:#7390b1;white-space:nowrap}
+.emploi-last{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:0 0 12px;padding:9px 11px;border-radius:11px;background:rgba(106,232,165,.035);border:1px solid rgba(106,232,165,.12)}
+.emploi-last>span{font-size:8px;letter-spacing:.8px;color:#5d9279;font-weight:800}
+.emploi-last strong{font-size:10px;color:#b9d7c8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emploi-last small{font-size:9px;color:#607996;white-space:nowrap}
+.emploi-statusbar{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:-4px 0 16px}
+.emploi-statusbar>div{min-width:0;padding:8px 7px;border:1px solid #192b3e;border-radius:11px;background:#0b1621;display:grid;grid-template-columns:auto 1fr;column-gap:6px;align-items:center}
+.emploi-statusbar span{grid-row:span 2;font-size:12px;color:#7692b2}
+.emploi-statusbar strong{font-size:12px;color:#d9e4f0;line-height:1}
+.emploi-statusbar small{font-size:8px;color:#536b87;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emploi-time-line{display:flex;align-items:center;gap:7px;padding:3px 15px;background:linear-gradient(90deg,transparent,rgba(75,123,236,.05),transparent);color:#6ea5ef;font-size:8px;font-weight:800;letter-spacing:.5px}
+.emploi-time-line:after{content:"";height:1px;flex:1;background:rgba(75,123,236,.45);box-shadow:0 0 7px rgba(75,123,236,.22)}
+.emploi-time-line.bottom{margin-top:2px}
+.emploi-course.is-done{opacity:.62}
+.emploi-course.is-done .emploi-course-title{text-decoration:line-through;text-decoration-color:rgba(128,154,180,.45)}
+.emploi-done-tag{font-size:8px;color:#6b9a82}
+.emploi-mastery{padding:2px 5px;border-radius:5px;background:rgba(75,123,236,.07);color:#7698c0}
+.emploi-mastery.empty{background:rgba(107,127,154,.06);color:#4f6580}
+.emploi-room-view{padding:0;overflow:hidden;margin-bottom:14px;background:linear-gradient(145deg,#0d1824,#0a141f);border-color:#1b2d42}
+.emploi-room-head{padding:15px;border-bottom:1px solid #172536}
+.emploi-room-group{border-bottom:1px solid #132131}
+.emploi-room-group:last-child{border-bottom:0}
+.emploi-room-title{padding:10px 15px 6px;font-size:10px;letter-spacing:.4px;color:#829bb8;font-weight:800;display:flex;justify-content:space-between}
+.emploi-room-title span{font-size:8px;padding:2px 6px;border-radius:999px;background:#142235;color:#6e89aa}
+.emploi-room-group .emploi-course{border-bottom:1px solid #132131}
+@media(max-width:420px){
+  .emploi-statusbar{gap:5px}
+  .emploi-statusbar>div{padding:7px 5px}
+  .emploi-statusbar strong{font-size:11px}
+  .emploi-statusbar small{font-size:7px}
+  .emploi-last{grid-template-columns:1fr auto}
+  .emploi-last>span{grid-column:1/-1}
+  .emploi-last strong{font-size:10px}
+}
