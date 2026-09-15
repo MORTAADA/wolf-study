@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-// V61.7 Dependency Container — application code consumes stable service contracts.
+// V62.0 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
 if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
@@ -390,7 +390,7 @@ async function getPersistentFile(handle){
    Persistent FileSystemFileHandle is stored; file bytes stay
    in phone storage. Reader uses an object URL only while open.
    ========================================================= */
-/* V61.8 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
+/* V62.0 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
 async function wwOpenResourceInApp(sid,rid){
   var r=null;
   Object.keys(state.resources[sid]||{}).some(function(f){
@@ -417,6 +417,8 @@ async function wwOpenResourceInApp(sid,rid){
 
 var state = window.WWState.create({subjects:MASTER_SUBJECTS, topics:TOPICS_SEED, languages:JSON.parse(JSON.stringify(LANGUAGES))});
 var pomodoro = window.WWState.createPomodoro();
+var wwFocusTopicId='';
+try{wwFocusTopicId=localStorage.getItem('wwFocusTopicId')||''}catch(e){}
 try{var wwPomoSaved=JSON.parse(localStorage.getItem('wwPomodoroSettings')||'null');if(wwPomoSaved){if(Number.isFinite(+wwPomoSaved.workTime))pomodoro.workTime=Math.max(1,Math.min(600,+wwPomoSaved.workTime));if(Number.isFinite(+wwPomoSaved.breakTime))pomodoro.breakTime=Math.max(0,Math.min(600,+wwPomoSaved.breakTime));pomodoro.freeMode=!!wwPomoSaved.freeMode;pomodoro.remaining=pomodoro.workTime*60;}}catch(e){}
 
 // ============================================================
@@ -1012,6 +1014,10 @@ function renderIntelligenceBrief(){
   return '<div class="ww-intelligence card"><div class="ww-intel-head"><div><div class="card-title">🧠 Intelligence 2.0</div><div class="ww-intel-sub">Signal Engine · analyse live · sans modifier ton Planning Hebdo</div></div><span class="ww-intel-live">LIVE</span></div><div class="ww-intel-main"><div class="ww-intel-icon">'+a.icon+'</div><div class="ww-intel-copy"><div class="ww-intel-title">'+a.title+'</div><div class="ww-intel-desc">'+a.desc+'</div><div class="ww-intel-reason">Pourquoi : '+a.reason+'</div></div></div>'+action+'<div class="ww-intel-score-head"><span>Priority Score</span><strong>'+a.score+'/100</strong></div><div class="ww-intel-signals-grid">'+bars+'</div><div class="ww-intel-signals">'+examLine+'<span>📋 Mission '+s.mission.done+'/'+s.mission.total+'</span><span>⚠️ '+s.errors.length+' erreur'+(s.errors.length!==1?'s':'')+' due'+(s.errors.length!==1?'s':'')+'</span><span>📚 '+s.weekSessions+' session'+(s.weekSessions!==1?'s':'')+' / 7j</span></div></div>';
 }
 
+function wwFocusTopic(){return state.topics.find(function(t){return t.id===wwFocusTopicId})||null}
+function wwSetFocusTopic(id){wwFocusTopicId=id||'';try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){};render()}
+function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
+function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V62</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1053,7 +1059,7 @@ function renderDashboard(){
       (tasks.length?tasks.map(function(t){return '<div class="task-item"><div class="task-left"><div class="task-text">'+t.text+'</div><div class="task-meta">'+(t.time||'')+' • '+t.priority+'</div></div><div class="task-right"><span class="task-priority '+t.priority+'">'+t.priority+'</span><button class="btn-small btn-outline" data-task-done="'+t.id+'">✅</button><button class="btn-small btn-outline" data-task-delete="'+t.id+'">🗑️</button></div></div>'}).join(''):'<div class="text-muted text-small">Aucune tâche.</div>')+
     '</div>'+
     (hasRev&&state.settings.showSmartRevision?'<div class="card"><div class="card-title">🧠 À réviser <span class="badge">'+Object.keys(rev).reduce(function(a,k){return a+rev[k].length},0)+'</span></div>'+Object.keys(rev).map(function(sid){var items=rev[sid];var s=state.subjects.find(function(x){return x.id===sid});return '<div class="revision-group"><div class="revision-group-header" data-group-toggle="'+sid+'"><div><span class="group-title">📖 '+(s?s.name:'Matière')+'</span><span class="group-meta"> • '+items.length+'</span></div><span class="group-meta">▼</span></div><div class="revision-group-body" id="body-'+sid+'">'+items.map(function(r){return '<div class="revision-item"><div><div class="name">'+r.title+'</div><div class="sub">📅 '+r.daysSinceLastStudy+' jours · Niveau '+r.level+'/4</div></div><button class="btn-small btn-outline" data-session-topic="'+r.topicId+'">🔄</button></div>'}).join('')+'</div></div>'}).join('')+'</div>':'')+
-    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
+    renderFocusCockpit()+    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
   '</div>';
 }
 
@@ -1399,7 +1405,7 @@ function renderModal(){
 
 function savePomodoroSettings(){try{localStorage.setItem('wwPomodoroSettings',JSON.stringify({workTime:pomodoro.workTime,breakTime:pomodoro.breakTime,freeMode:pomodoro.freeMode}))}catch(e){}}
 function applyPomodoroSettings(){var wi=document.getElementById('pomo-work-min'),bi=document.getElementById('pomo-break-min'),fi=document.getElementById('pomo-free-mode');var w=wi?parseInt(wi.value,10):pomodoro.workTime;var b=bi?parseInt(bi.value,10):pomodoro.breakTime;if(!Number.isFinite(w)||w<1)w=1;if(!Number.isFinite(b)||b<0)b=0;pomodoro.workTime=Math.min(w,600);pomodoro.breakTime=Math.min(b,600);pomodoro.freeMode=!!(fi&&fi.checked);if(!pomodoro.isRunning){pomodoro.isBreak=false;pomodoro.remaining=pomodoro.workTime*60;}savePomodoroSettings();showToast('⏱️ Durée du minuteur mise à jour');render()}
-function startPomodoro(){if(pomodoro.isRunning)return;pomodoro.isRunning=true;if(pomodoro.remaining<=0)pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;pomodoro.timerId=setInterval(function(){pomodoro.remaining--;if(pomodoro.remaining<=0){pomodoro.remaining=0;clearInterval(pomodoro.timerId);pomodoro.isRunning=false;if(!pomodoro.freeMode){pomodoro.isBreak=!pomodoro.isBreak;pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;}if(navigator.vibrate)navigator.vibrate([200,100,200]);sendNotification(pomodoro.freeMode?'⏰ Minuteur terminé':(pomodoro.isBreak?'☕ Travail terminé':'⏰ Pause terminée'),pomodoro.freeMode?'Temps écoulé':(pomodoro.isBreak?'Prends une pause':'Reprends le travail'),{tag:'pomodoro'});render()}render()},1000);render()}
+function startPomodoro(){if(pomodoro.isRunning)return;pomodoro.isRunning=true;if(pomodoro.remaining<=0)pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;pomodoro.timerId=setInterval(function(){pomodoro.remaining--;if(pomodoro.remaining<=0){pomodoro.remaining=0;clearInterval(pomodoro.timerId);pomodoro.isRunning=false;var wwFinishedWork=!pomodoro.isBreak;if(wwFinishedWork&&!pomodoro.freeMode)wwLogCompletedFocus();if(!pomodoro.freeMode){pomodoro.isBreak=!pomodoro.isBreak;pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;}if(navigator.vibrate)navigator.vibrate([200,100,200]);sendNotification(pomodoro.freeMode?'⏰ Minuteur terminé':(pomodoro.isBreak?'☕ Travail terminé':'⏰ Pause terminée'),pomodoro.freeMode?'Temps écoulé':(pomodoro.isBreak?'Prends une pause':'Reprends le travail'),{tag:'pomodoro'});render()}render()},1000);render()}
 function pausePomodoro(){if(!pomodoro.isRunning)return;clearInterval(pomodoro.timerId);pomodoro.isRunning=false;render()}
 function stopPomodoro(){clearInterval(pomodoro.timerId);pomodoro.isRunning=false;pomodoro.isBreak=false;pomodoro.remaining=pomodoro.workTime*60;render()}
 function resetPomodoro(){stopPomodoro()}
@@ -1447,6 +1453,7 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pomo-stop]').forEach(function(el){el.onclick=stopPomodoro});
   document.querySelectorAll('[data-pomo-reset]').forEach(function(el){el.onclick=resetPomodoro});
   document.querySelectorAll('[data-pomo-apply]').forEach(function(el){el.onclick=applyPomodoroSettings});
+  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var sel=document.getElementById('ww-focus-topic');wwSetFocusTopic(sel?sel.value:'')};
   document.querySelectorAll('[data-group-toggle]').forEach(function(el){el.onclick=function(){var b=document.getElementById('body-'+this.dataset.groupToggle);if(b)b.classList.toggle('open')}});
   document.querySelectorAll('[data-stats-tab]').forEach(function(el){el.onclick=function(){state.statsTab=this.dataset.statsTab;state.reviewSession=null;render()}});
   document.querySelectorAll('[data-intel-stats]').forEach(function(el){el.onclick=function(e){e.stopPropagation();state.statsTab=this.dataset.intelStats||'overview';state.reviewSession=null;state.route='stats';render()}});
@@ -1471,7 +1478,7 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=function(){
     var input=document.getElementById('resource-file');
     if(!input){showToast('Sélecteur de fichier indisponible');return;}
-    // V61.7 Android/PWA fix: open the native <input type=file> directly from
+    // V62.0 Android/PWA fix: open the native <input type=file> directly from
     // the user gesture. Waiting for showOpenFilePicker() and then calling
     // input.click() loses Android's user-activation token, so the fallback
     // picker may silently do nothing. The native picker is the most reliable
@@ -1568,8 +1575,8 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'61.6',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:61.6,schemaVersion:3};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'62.0',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:62.0,schemaVersion:3};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
 window.WWResourceAPI={
   getAllResources:getAllResources,
