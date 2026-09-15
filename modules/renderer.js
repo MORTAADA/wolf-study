@@ -9,5 +9,5 @@
     return {ok:true,duration:Math.max(0,ended-started)};
   }
   function clear(root){if(root)root.innerHTML=''}
-  window.WWRenderer={mount:mount,clear:clear,version:'61.6'};
+  window.WWRenderer={mount:mount,clear:clear,version:'62.0'};
 })();

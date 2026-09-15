@@ -1,4 +1,4 @@
-/* WHITE WOLF SCHOLAR — ARCHITECTURE CONTRACT / V61.6
+/* WHITE WOLF SCHOLAR — ARCHITECTURE CONTRACT / V62.0
    Keeps feature modules discoverable without exposing internal state.
 */
 (function(){
@@ -10,7 +10,7 @@
   function diagnostics(){
     var app=getApp();
     return {
-      version:"61.6",
+      version:"62.0",
       schemaVersion:2,
       core:!!app.state,
       persistence:!!window.WWPersistence,
