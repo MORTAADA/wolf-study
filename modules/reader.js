@@ -78,8 +78,12 @@
 
     if(type==="application/pdf" || ext==="pdf"){
       var frame=document.createElement("iframe");
+      frame.className="ww-reader-pdf";
       frame.src=R.currentUrl;
-      frame.title=file.name;
+      frame.title=file.name||"PDF";
+      frame.setAttribute("loading","eager");
+      frame.setAttribute("allow","fullscreen");
+      frame.addEventListener("error",function(){showUnsupported();});
       R.content.appendChild(frame);
       return;
     }

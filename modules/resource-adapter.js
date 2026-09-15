@@ -1,30 +1,6 @@
 /* V43 resource reader hook: intercept clicks on resource cards/buttons that
    carry a persistent resource id/handle. */
 (function(){
-  function findResourceHandle(el){
-    var id = el && (el.dataset ? (el.dataset.resourceId || el.dataset.id) : null);
-    if(!id) return null;
-    try{
-      if(typeof window.getResourceFileHandle==="function") return window.getResourceFileHandle(id);
-    }catch(e){}
-    return null;
-  }
-
-  document.addEventListener("click", function(e){
-    var el=e.target.closest ? e.target.closest("[data-resource-open],[data-open-resource]") : null;
-    if(!el) return;
-    var id=el.dataset.resourceOpen || el.dataset.openResource || el.dataset.resourceId;
-    if(!id) return;
-    if(typeof window.wwGetStoredResourceHandle==="function"){
-      e.preventDefault(); e.stopPropagation();
-      window.wwGetStoredResourceHandle(id).then(function(result){
-        if(result && result.handle) window.wwOpenStoredResource(result.handle,result.name);
-      });
-    }
-  }, true);
-})();
-
-(function(){
   window.wwGetStoredResourceHandle=async function(id){
     try{
       var dbName=null;
