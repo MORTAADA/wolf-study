@@ -158,7 +158,7 @@
   };
 
   // Public helper for direct File objects, useful for the fallback picker.
-  window.wwOpenFileInReader=function(file){
+  window.wwOpenFileInReader=function(file,title){
     if(file) renderFile(file);
   };
 

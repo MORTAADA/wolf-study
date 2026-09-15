@@ -13,8 +13,8 @@
       controllers:S.controllers?S.controllers():{}
     };
     container.ready=!!(container.persistence&&container.events&&container.state&&container.router&&container.renderer);
-    container.version='60.0';
+    container.version='61.5';
     return container;
   }
-  window.WWDI={create:create,version:'60.0'};
+  window.WWDI={create:create,version:'61.5'};
 })();
