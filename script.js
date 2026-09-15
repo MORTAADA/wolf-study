@@ -1040,7 +1040,7 @@ function wwSmartFocusCandidates(){
 function wwSmartFocusStart(){var candidates=wwSmartFocusCandidates();if(!wwFocusTopicId&&candidates.length)wwFocusTopicId=candidates[0].topic.id;try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId)}catch(e){};if(!pomodoro.isRunning)startPomodoro();}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
 
-/* V62.3: Focus context — visible proof of what the timer is associated with. */
+/* V62.4: Focus context — visible proof of what the timer is associated with. */
 function wwFocusContextData(){
   try{
     var p=window.wwFocusState || window.focusState || null;
@@ -1102,7 +1102,7 @@ function wwEnsureFocusContext(){
   wwRenderFocusContext();
 }
 
-function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.3</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
+function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.4</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1672,7 +1672,7 @@ window.WWResourceAPI={
 
 })();
 
-/* V62.3 refresh hooks */
+/* V62.4 refresh hooks */
 document.addEventListener("DOMContentLoaded", function(){ setTimeout(wwEnsureFocusContext, 0); });
 var wwFocusContextRefreshTimer = null;
 var wwFocusContextObserver = new MutationObserver(function(){
