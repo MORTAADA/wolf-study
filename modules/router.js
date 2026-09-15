@@ -18,5 +18,5 @@
       return render();
     };
   }
-  window.WWRouter={create:createRouter,version:'62.0'};
+  window.WWRouter={create:createRouter,version:'62.3'};
 })();
