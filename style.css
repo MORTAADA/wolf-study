@@ -1415,9 +1415,9 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .ww-focus-empty{margin-top:10px;color:#70849f;font-size:11px}
 @media(max-width:420px){.ww-focus-row{flex-direction:column}.ww-focus-row .btn-primary{width:100%}}
 
-/* V62.4 FOCUS CONTEXT UI */
+/* V62.5 FOCUS CONTEXT UI */
 
-/* V62.4 FOCUS CONTEXT UI */
+/* V62.5 FOCUS CONTEXT UI */
 .ww-focus-context{
   margin:10px 0 14px;
   padding:12px 14px;
@@ -1464,3 +1464,43 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 }
 .ww-focus-done strong{display:block;margin-bottom:5px}
 .ww-focus-done__actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+/* V62.5 — Focus Mode / Pomodoro premium UX */
+.ww-pomodoro-card{position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(10,20,32,.98),rgba(6,14,23,.98));border:1px solid rgba(75,123,236,.20)}
+.ww-pomodoro-linked{border-color:rgba(106,232,165,.22);box-shadow:0 18px 50px rgba(0,0,0,.18),0 0 0 1px rgba(106,232,165,.025) inset}
+.ww-pomodoro-linked:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#6ae8a5,#4b7bec);opacity:.9}
+.ww-pomodoro-title{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:10px}
+.ww-pomodoro-label{font-size:10px;font-weight:800;letter-spacing:.16em;color:#7f97b5;text-align:center;margin:4px 0 2px;text-transform:uppercase}
+.ww-pomodoro-linked .ww-pomodoro-label{color:#6ae8a5}
+.ww-pomodoro-card .timer-display{font-size:clamp(52px,8vw,72px);line-height:1.05;text-shadow:0 8px 28px rgba(0,0,0,.28);margin:8px 0 14px}
+.ww-pomodoro-card .timer-controls{margin:0 0 18px}
+.ww-focus-context{margin:2px auto 12px;max-width:650px;padding:13px 15px;border:1px solid rgba(106,232,165,.20);border-radius:16px;background:linear-gradient(135deg,rgba(106,232,165,.055),rgba(75,123,236,.045));box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.ww-focus-context__top{margin-bottom:7px}
+.ww-focus-badge{color:#dcecff}
+.ww-focus-link{font-size:.70rem;color:#8ba2c0}
+.ww-focus-dot.ready{background:#4b7bec;box-shadow:0 0 10px rgba(75,123,236,.5)}
+.ww-focus-context__title{font-size:14px;line-height:1.3;color:#f0f6ff;margin-bottom:7px}
+.ww-focus-context__sub{font-size:11px;color:#8ba2c0;line-height:1.4}
+.ww-focus-context__meta{margin-top:8px}
+.ww-focus-chip{border:1px solid rgba(139,162,192,.10);background:rgba(255,255,255,.035);color:#b9cbe0}
+.pomo-settings-collapse{max-width:650px;margin:4px auto 0;border:1px solid rgba(139,162,192,.13);border-radius:14px;background:rgba(255,255,255,.018);overflow:hidden;text-align:left}
+.pomo-settings-collapse summary{cursor:pointer;list-style:none;padding:11px 13px;color:#9eb3cc;font-size:11px;font-weight:700;text-align:center;user-select:none}
+.pomo-settings-collapse summary::-webkit-details-marker{display:none}
+.pomo-settings-collapse summary:after{content:"＋";margin-left:7px;opacity:.65}
+.pomo-settings-collapse[open] summary:after{content:"−"}
+.pomo-settings-collapse .pomo-settings{border-top:1px solid rgba(139,162,192,.10);padding:12px 13px}
+.pomo-settings-collapse .pomo-settings-title{display:none}
+.pomo-free-toggle{display:flex!important;align-items:flex-start;gap:9px;line-height:1.4;margin-top:10px!important;color:#8ba2c0!important}
+.pomo-free-toggle input{margin-top:2px;flex:0 0 auto}
+@media(max-width:600px){
+  .ww-pomodoro-card .timer-display{font-size:clamp(48px,16vw,64px)}
+  .ww-focus-context{padding:12px;margin-left:0;margin-right:0}
+  .ww-focus-context__meta{gap:5px}
+  .ww-focus-chip{max-width:100%;white-space:normal}
+  .pomo-settings-collapse .pomo-duration-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:420px){
+  .ww-pomodoro-card .timer-controls{gap:7px}
+  .ww-pomodoro-card .timer-controls button{padding:8px 12px}
+  .pomo-settings-collapse .pomo-duration-grid{grid-template-columns:1fr}
+}

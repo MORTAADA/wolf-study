@@ -1040,69 +1040,59 @@ function wwSmartFocusCandidates(){
 function wwSmartFocusStart(){var candidates=wwSmartFocusCandidates();if(!wwFocusTopicId&&candidates.length)wwFocusTopicId=candidates[0].topic.id;try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId)}catch(e){};if(!pomodoro.isRunning)startPomodoro();}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
 
-/* V62.4: Focus context — visible proof of what the timer is associated with. */
+/* V62.5: Focus context — visible proof of what the timer is associated with. */
 function wwFocusContextData(){
   try{
-    var p=window.wwFocusState || window.focusState || null;
-    var linked = p && (p.topicId || p.subjectId || p.taskId || p.missionId || p.label || p.name);
-    var label = p && (p.label || p.name || "");
-    var subject = p && (p.subjectName || p.subject || "");
-    var topic = p && (p.topicName || p.topic || "");
-    var task = p && (p.taskName || p.task || "");
-    if(!label && topic) label=topic;
-    if(!label && task) label=task;
-    if(!label && subject) label=subject;
+    var topic=wwFocusTopic();
+    var subject=topic?state.subjects.find(function(x){return x.id===topic.subject_id}):null;
+    var missionItems=wwMissionItems();
+    var missionTask=missionItems.find(function(x){
+      var txt=String(x.text||'').toLowerCase();
+      return topic && (txt.indexOf(String(topic.title||'').toLowerCase())>=0 || (subject && txt.indexOf(String(subject.name||'').toLowerCase())>=0));
+    });
+    var linked=!!topic;
     return {
-      linked: !!linked,
-      label: label || "",
-      subject: subject || "",
-      topic: topic || "",
-      task: task || "",
-      source: (p && p.source) || (p && p.missionId ? "mission" : "focus")
+      linked:linked,
+      label:topic?topic.title:'',
+      subject:subject?subject.name:'',
+      topic:topic?topic.title:'',
+      task:missionTask?String(missionTask.text||'').replace(/^[📚📖🎯⚡▶️\s]+/,'').trim():'',
+      source:missionTask?'mission':'focus'
     };
-  }catch(e){ return {linked:false,label:"",subject:"",topic:"",task:"",source:"focus"}; }
+  }catch(e){ return {linked:false,label:'',subject:'',topic:'',task:'',source:'focus'}; }
 }
 
 function wwRenderFocusContext(){
   var d=wwFocusContextData();
-  var el=document.getElementById("wwFocusContext");
-  if(!el) return;
-  var state = d.linked ? "active" : "free";
-  var badge = d.linked ? "🎯 FOCUS · ACTIVE" : "⚪ MODE LIBRE";
-  var title = d.label || "Aucune matière ou tâche associée";
-  var sub = d.linked
-    ? ("Session liée à " + (d.task ? "la tâche" : "votre Focus") + " ✓")
-    : "Cette session ne sera pas associée à une matière ou une tâche.";
-  el.innerHTML =
+  var el=document.getElementById('wwFocusContext');
+  if(!el)return;
+  var stateClass=d.linked?(pomodoro.isRunning?'active':'ready'):'free';
+  var badge=d.linked?(pomodoro.isRunning?(pomodoro.isBreak?'🎯 FOCUS · PAUSE':'🎯 FOCUS · ACTIVE'):'🎯 FOCUS · PRÊT'):'⚪ MODE LIBRE';
+  var sub=d.linked
+    ? (pomodoro.isRunning ? 'Cette session Pomodoro est actuellement liée à ce Focus.' : 'Le prochain Pomodoro sera enregistré sur ce Focus.')
+    : 'Sélectionne un chapitre ci-dessus pour lier le minuteur à ta progression.';
+  el.innerHTML=
     '<div class="ww-focus-context__top">'+
-      '<div class="ww-focus-badge"><span class="ww-focus-dot '+state+'"></span>'+badge+'</div>'+
-      '<span class="ww-focus-link">'+(d.linked ? "🔗 Liée" : "Libre")+'</span>'+
+      '<div class="ww-focus-badge"><span class="ww-focus-dot '+stateClass+'"></span>'+badge+'</div>'+
+      '<span class="ww-focus-link">'+(d.linked?'🔗 Session liée':'Libre')+'</span>'+
     '</div>'+
-    '<div class="ww-focus-context__title">'+(title||"—")+'</div>'+
-    '<div class="ww-focus-context__sub">'+sub+'</div>'+
-    '<div class="ww-focus-context__meta">'+
-      (d.subject ? '<span class="ww-focus-chip">📚 '+d.subject+'</span>' : '')+
-      (d.topic ? '<span class="ww-focus-chip">📖 '+d.topic+'</span>' : '')+
-      (d.task ? '<span class="ww-focus-chip">📋 '+d.task+'</span>' : '')+
-    '</div>';
+    (d.linked
+      ? '<div class="ww-focus-context__title">'+d.label+'</div>'+
+        '<div class="ww-focus-context__meta">'+
+          (d.subject?'<span class="ww-focus-chip">📚 '+d.subject+'</span>':'')+
+          '<span class="ww-focus-chip">📖 '+d.topic+'</span>'+
+          (d.task?'<span class="ww-focus-chip">📋 Mission: '+d.task+'</span>':'')+
+        '</div>'
+      : '<div class="ww-focus-context__title">Aucun Focus associé</div>')+
+    '<div class="ww-focus-context__sub">'+sub+'</div>';
 }
 
 function wwEnsureFocusContext(){
-  var timer = document.getElementById("pomodoroTimer") ||
-              document.querySelector(".pomodoro-timer") ||
-              document.querySelector('[id*="pomodoro"]');
-  if(!timer) return;
-  var el=document.getElementById("wwFocusContext");
-  if(!el){
-    el=document.createElement("div");
-    el.id="wwFocusContext";
-    el.className="ww-focus-context";
-    timer.parentElement && timer.parentElement.insertBefore(el,timer);
-  }
-  wwRenderFocusContext();
+  var el=document.getElementById('wwFocusContext');
+  if(el)wwRenderFocusContext();
 }
 
-function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.4</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
+function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.5</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1144,7 +1134,7 @@ function renderDashboard(){
       (tasks.length?tasks.map(function(t){return '<div class="task-item"><div class="task-left"><div class="task-text">'+t.text+'</div><div class="task-meta">'+(t.time||'')+' • '+t.priority+'</div></div><div class="task-right"><span class="task-priority '+t.priority+'">'+t.priority+'</span><button class="btn-small btn-outline" data-task-done="'+t.id+'">✅</button><button class="btn-small btn-outline" data-task-delete="'+t.id+'">🗑️</button></div></div>'}).join(''):'<div class="text-muted text-small">Aucune tâche.</div>')+
     '</div>'+
     (hasRev&&state.settings.showSmartRevision?'<div class="card"><div class="card-title">🧠 À réviser <span class="badge">'+Object.keys(rev).reduce(function(a,k){return a+rev[k].length},0)+'</span></div>'+Object.keys(rev).map(function(sid){var items=rev[sid];var s=state.subjects.find(function(x){return x.id===sid});return '<div class="revision-group"><div class="revision-group-header" data-group-toggle="'+sid+'"><div><span class="group-title">📖 '+(s?s.name:'Matière')+'</span><span class="group-meta"> • '+items.length+'</span></div><span class="group-meta">▼</span></div><div class="revision-group-body" id="body-'+sid+'">'+items.map(function(r){return '<div class="revision-item"><div><div class="name">'+r.title+'</div><div class="sub">📅 '+r.daysSinceLastStudy+' jours · Niveau '+r.level+'/4</div></div><button class="btn-small btn-outline" data-session-topic="'+r.topicId+'">🔄</button></div>'}).join('')+'</div></div>'}).join('')+'</div>':'')+
-    renderFocusCockpit()+    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
+    renderFocusCockpit()+    '<div class="card ww-pomodoro-card '+(wwFocusTopic()?'ww-pomodoro-linked':'ww-pomodoro-free')+'"><div class="card-title ww-pomodoro-title"><span>⏱️ Pomodoro</span><span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div id="wwFocusContext" class="ww-focus-context"></div><div class="ww-pomodoro-label">'+(pomodoro.isRunning?(pomodoro.isBreak?'PAUSE EN COURS':'SESSION EN COURS'):(wwFocusTopic()?'FOCUS PRÊT':'MINUTEUR LIBRE'))+'</div><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><details class="pomo-settings-collapse"><summary>⚙️ Réglage du temps</summary><div class="pomo-settings"><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'><span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></details></div></div>'+
   '</div>';
 }
 
@@ -1672,11 +1662,5 @@ window.WWResourceAPI={
 
 })();
 
-/* V62.4 refresh hooks */
-document.addEventListener("DOMContentLoaded", function(){ setTimeout(wwEnsureFocusContext, 0); });
-var wwFocusContextRefreshTimer = null;
-var wwFocusContextObserver = new MutationObserver(function(){
-  clearTimeout(wwFocusContextRefreshTimer);
-  wwFocusContextRefreshTimer=setTimeout(wwEnsureFocusContext, 120);
-});
-try{ wwFocusContextObserver.observe(document.body,{childList:true,subtree:true}); }catch(e){}
+/* V62.5 refresh hooks */
+document.addEventListener('DOMContentLoaded',function(){setTimeout(wwEnsureFocusContext,0);});
