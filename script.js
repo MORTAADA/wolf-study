@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-// V60 Dependency Container — application code consumes stable service contracts.
+// V61.5 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
 if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
@@ -390,98 +390,14 @@ async function getPersistentFile(handle){
    Persistent FileSystemFileHandle is stored; file bytes stay
    in phone storage. Reader uses an object URL only while open.
    ========================================================= */
-var WWReader = {
-  root:null, content:null, title:null, type:null, status:null,
-  external:null, url:null, file:null
-};
-
-function wwReaderInit(){
-  WWReader.root=document.getElementById('ww-file-reader');
-  WWReader.content=document.getElementById('ww-reader-content');
-  WWReader.title=document.getElementById('ww-reader-title');
-  WWReader.type=document.getElementById('ww-reader-type');
-  WWReader.status=document.getElementById('ww-reader-status');
-  WWReader.external=document.getElementById('ww-reader-external');
-  if(!WWReader.root)return;
-  var close=document.getElementById('ww-reader-close');
-  if(close)close.onclick=wwReaderClose;
-  var back=WWReader.root.querySelector('[data-reader-close]');
-  if(back)back.onclick=wwReaderClose;
-  if(WWReader.external)WWReader.external.onclick=function(){
-    if(WWReader.url)window.open(WWReader.url,'_blank','noopener');
-  };
-}
-
-function wwReaderClose(){
-  if(!WWReader.root)return;
-  WWReader.root.classList.remove('is-open');
-  WWReader.root.setAttribute('aria-hidden','true');
-  if(WWReader.content)WWReader.content.innerHTML='';
-  if(WWReader.url){setTimeout(function(){try{URL.revokeObjectURL(WWReader.url)}catch(e){}},250);WWReader.url=null}
-  WWReader.file=null;
-  document.body.classList.remove('ww-reader-lock');
-}
-
-function wwReaderEscape(e){if(e.key==='Escape'&&WWReader.root&&WWReader.root.classList.contains('is-open'))wwReaderClose()}
-
-function wwReaderOpen(file,title){
-  if(!WWReader.root)wwReaderInit();
-  if(!WWReader.root)return;
-  if(WWReader.url){try{URL.revokeObjectURL(WWReader.url)}catch(e){}}
-  WWReader.file=file; WWReader.url=URL.createObjectURL(file);
-  WWReader.title.textContent=title||file.name||'Resource';
-  var mime=(file.type||'').toLowerCase(), name=(file.name||'').toLowerCase();
-  var ext=(name.match(/\.([a-z0-9]+)$/)||[])[1]||'';
-  var kind=mime;
-  if(!kind){
-    if(ext==='pdf')kind='application/pdf';
-    else if(['png','jpg','jpeg','gif','webp','svg','bmp','avif'].indexOf(ext)>=0)kind='image/'+(ext==='jpg'?'jpeg':ext);
-    else if(['mp4','webm','ogg','mov'].indexOf(ext)>=0)kind='video/'+ext;
-    else if(['mp3','wav','m4a','aac','flac'].indexOf(ext)>=0)kind='audio/'+ext;
-    else if(['txt','md','csv','json','js','css','html','xml'].indexOf(ext)>=0)kind='text/plain';
-  }
-  WWReader.type.textContent=(ext||kind.split('/')[1]||'FILE').toUpperCase();
-  WWReader.status.textContent='Fichier local — lecture depuis le stockage du téléphone';
-  WWReader.content.innerHTML='';
-
-  if(kind==='application/pdf'||ext==='pdf'){
-    var iframe=document.createElement('iframe');
-    iframe.src=WWReader.url; iframe.title=title||file.name;
-    WWReader.content.appendChild(iframe);
-  }else if(kind.indexOf('image/')===0||['png','jpg','jpeg','gif','webp','svg','bmp','avif'].indexOf(ext)>=0){
-    var img=document.createElement('img'); img.src=WWReader.url; img.alt=title||file.name;
-    WWReader.content.appendChild(img);
-  }else if(kind.indexOf('video/')===0||['mp4','webm','ogg','mov'].indexOf(ext)>=0){
-    var video=document.createElement('video'); video.className='ww-reader-video';
-    video.src=WWReader.url; video.controls=true; video.playsInline=true; video.preload='metadata';
-    WWReader.content.appendChild(video);
-  }else if(kind.indexOf('audio/')===0||['mp3','wav','m4a','aac','flac','ogg'].indexOf(ext)>=0){
-    var audio=document.createElement('audio'); audio.className='ww-reader-audio';
-    audio.src=WWReader.url; audio.controls=true; audio.preload='metadata';
-    WWReader.content.appendChild(audio);
-  }else if(kind.indexOf('text/')===0||['txt','md','csv','json','js','css','html','xml'].indexOf(ext)>=0){
-    var pre=document.createElement('pre'); pre.className='ww-reader-text';
-    WWReader.content.appendChild(pre);
-    file.text().then(function(t){pre.textContent=t}).catch(function(){pre.textContent='Impossible de lire ce fichier.'});
-  }else if(ext==='doc'||ext==='docx'||ext==='odt'||ext==='rtf'){
-    var box=document.createElement('div'); box.className='ww-reader-empty';
-    box.innerHTML='<strong>Ce format ne possède pas de moteur de rendu natif dans le navigateur.</strong><span>Le fichier reste dans le stockage du téléphone. Utilise ↗ pour l’ouvrir avec l’application compatible installée sur ton téléphone.</span>';
-    WWReader.content.appendChild(box);
-  }else{
-    var box2=document.createElement('div'); box2.className='ww-reader-empty';
-    box2.innerHTML='<strong>Aperçu non disponible pour ce format.</strong><span>Le fichier est bien conservé dans le stockage du téléphone. Utilise ↗ pour l’ouvrir avec l’application compatible.</span>';
-    WWReader.content.appendChild(box2);
-  }
-  WWReader.root.classList.add('is-open'); WWReader.root.setAttribute('aria-hidden','false');
-  document.body.classList.add('ww-reader-lock');
-}
-
+/* V61.5 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
 async function wwOpenResourceInApp(sid,rid){
   var r=null;
   Object.keys(state.resources[sid]||{}).some(function(f){
-    r=(state.resources[sid][f]||[]).find(function(x){return x.id===rid}); return !!r;
+    r=(state.resources[sid][f]||[]).find(function(x){return x.id===rid});
+    return !!r;
   });
-  if(!r||!r.fileKey){return}
+  if(!r||!r.fileKey)return;
   try{
     var stored=await fileGet(r.fileKey);
     if(!stored){showToast('Référence du fichier introuvable');return}
@@ -491,7 +407,8 @@ async function wwOpenResourceInApp(sid,rid){
       if(!file){showToast('Autorisation refusée ou fichier déplacé');return}
     }
     if(!file){showToast('Fichier introuvable');return}
-    wwReaderOpen(file,r.title||file.name);
+    if(window.wwOpenFileInReader) window.wwOpenFileInReader(file,r.title||file.name);
+    else showToast('Lecteur interne indisponible');
   }catch(e){console.warn('Internal reader error',e);showToast('Impossible d’ouvrir le fichier')}
 }
 
@@ -1469,7 +1386,7 @@ function renderModal(){
   if(m.type==='exam'){var today2=wwLocalDateISO(new Date());return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📝 Nouvel examen</h3><div style="display:grid;gap:12px;"><input id="exam-title" placeholder="Titre" autofocus><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>📅 Date</label><input type="date" id="exam-date" value="'+today2+'"></div><div><label>⏰ Heure</label><input type="time" id="exam-time" value="09:00"></div></div><div><label>📚 Matière</label><select id="exam-subject"><option value="">Aucune</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select></div><div><label>📍 Salle</label><input id="exam-room" placeholder="Ex. P21, ME205, S.C.CHIM..."></div><textarea id="exam-notes" rows="2" placeholder="Notes"></textarea></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-exam>✅ Enregistrer</button></div></div></div>'}
   if(m.type==='examPrep'){return renderExamPreparation(wwFindExam(m.examId))}
   if(m.type==='folder'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📁 Nouveau dossier</h3><div style="display:grid;gap:12px;"><select id="folder-subject"><option value="">Choisir matière</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><input id="folder-name" placeholder="Nom du dossier"></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-folder>Enregistrer</button></div></div></div>'}
-  if(m.type==='resource'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📚 Nouvelle ressource</h3><div style="display:grid;gap:12px;"><select id="resource-subject"><option value="">Choisir matière</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><input id="resource-title" placeholder="Titre"><div class="res-input-label">🔗 Lien direct (optionnel)</div><input id="resource-url" placeholder="https://..." type="url"><div class="res-or">— ou —</div><div class="res-input-label">📥 Fichier sur le téléphone</div><button type="button" class="btn-outline" data-pick-resource-file>Choisir un fichier depuis le stockage</button><div id="resource-file-name" class="text-muted text-small">Aucun fichier sélectionné</div><input id="resource-file" type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.mp4,.webm,.ppt,.pptx" style="display:none"><div class="text-muted text-small">Le fichier reste dans le stockage du téléphone. White Wolf Scholar enregistre uniquement une référence au fichier.</div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-resource>✅ Enregistrer</button></div></div></div>'}
+  if(m.type==='resource'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📚 Nouvelle ressource</h3><div style="display:grid;gap:12px;"><select id="resource-subject"><option value="">Choisir matière</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><input id="resource-title" placeholder="Titre"><div class="res-input-label">🔗 Lien direct (optionnel)</div><input id="resource-url" placeholder="https://..." type="url"><div class="res-or">— ou —</div><div class="res-input-label">📥 Fichier sur le téléphone</div><button type="button" class="btn-outline" data-pick-resource-file>Choisir un fichier depuis le stockage</button><div id="resource-file-name" class="text-muted text-small">Aucun fichier sélectionné</div><input id="resource-file" type="file" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.mp4,.webm,.ppt,.pptx" style="display:none"><div class="text-muted text-small">Le fichier reste local. Si le navigateur le permet, White Wolf conserve une référence au fichier; sinon, une copie locale est stockée dans IndexedDB.</div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-resource>✅ Enregistrer</button></div></div></div>'}
   if(m.type==='resourceTime'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>⏱️ Enregistrer le temps</h3><div style="display:grid;gap:12px;"><label>Minutes étudiées</label><input id="resource-time-min" type="number" min="1" max="1440" value="30" autofocus></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-resource-time data-sid="'+m.subjectId+'" data-rid="'+m.resourceId+'">✅ Enregistrer</button></div></div></div>'}
   if(m.type==='session'){var today3=wwLocalDateISO(new Date());var tid=m.topicId;return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📚 Session</h3><div style="display:grid;gap:12px;"><div><label>📅 Date</label><input type="date" id="session-date" value="'+today3+'"></div><div><label>⏱️ Durée (min)</label><input type="number" id="session-duration" value="30" min="5" max="240"></div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-session="'+tid+'">Enregistrer</button></div></div></div>'}
   if(m.type==='progDetail'){var t=PROGRAMMING_TOPICS.find(function(x){return x.id===m.topicId});if(!t)return '';return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>'+t.icon+' '+t.title+'</h3><div class="what-learn"><h4>💡 ما ستتعلمه:</h4><ul>'+t.learn.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div><div class="modal-actions"><button class="btn-primary" data-close-modal>Fermer</button></div></div></div>'}
@@ -1547,8 +1464,8 @@ function attachAppEvents(){
   document.querySelectorAll('[data-add-folder]').forEach(function(el){el.onclick=function(){state.modal={type:'folder'};render()}});
   document.querySelectorAll('[data-save-folder]').forEach(function(el){el.onclick=function(){var sid=document.getElementById('folder-subject').value;var fn=document.getElementById('folder-name').value;if(!sid||!fn){alert('Remplir');return}if(!state.resources[sid])state.resources[sid]={};if(state.resources[sid][fn]){alert('Existe');return}state.resources[sid][fn]=[];state.modal=null;showToast('✅ Créé');saveState();render()}});
   document.querySelectorAll('[data-add-resource]').forEach(function(el){el.onclick=function(){state.modal={type:'resource'};render()}});
-  document.querySelectorAll('[data-save-resource]').forEach(function(el){el.onclick=async function(){var sid=document.getElementById('resource-subject').value;var title=document.getElementById('resource-title').value.trim();var url=document.getElementById('resource-url').value.trim();var fileInput=document.getElementById('resource-file');var file=(state.pendingResourceFile)||(fileInput&&fileInput.files?fileInput.files[0]:null);var handle=state.pendingResourceHandle;if(!sid||!title||(!url&&!file&&!handle)){alert('Ajoute un lien ou un fichier');return}if(!state.resources[sid])state.resources[sid]={};if(!state.resources[sid]['Général'])state.resources[sid]['Général']=[];var r={id:generateId(),title:title,url:url||'',tag:'📚',dateAdded:wwLocalDateISO(new Date()),favorite:false,studied:false,studyMinutes:0};if(file||handle){if(!handle&&file){alert('Ce navigateur ne permet pas de conserver une référence persistante vers le stockage du téléphone. Utilise Chrome/Edge avec le bouton « Choisir un fichier depuis le stockage ».');return}r.fileKey='rf_'+r.id;r.fileName=(file&&file.name)||'Fichier sélectionné';r.fileType=((file&&file.type)||'').indexOf('pdf')!==-1?'pdf':((file&&file.type)||'').indexOf('word')!==-1?'doc':((file&&file.type)||'').indexOf('image')!==-1?'image':((file&&file.type)||'').indexOf('audio')!==-1?'audio':((file&&file.type)||'').indexOf('video')!==-1?'video':'doc';try{await fileSet(r.fileKey,handle)}catch(e){alert('Impossible d’enregistrer la référence du fichier');return}}state.resources[sid]['Général'].push(r);state.modal=null;state.pendingResourceHandle=null;state.pendingResourceFile=null;showToast('✅ Ressource ajoutée');await saveState();render()}});
-  document.querySelectorAll('#resource-file').forEach(function(el){el.onchange=function(){var f=this.files&&this.files[0];if(f){state.pendingResourceFile=f;state.pendingResourceHandle=null;var nameEl=document.getElementById('resource-file-name');if(nameEl)nameEl.textContent='✓ '+f.name+' — سيتم استخدام نسخة المتصفح في هذا المتصفح';}}});
+  document.querySelectorAll('[data-save-resource]').forEach(function(el){el.onclick=async function(){var sid=document.getElementById('resource-subject').value;var title=document.getElementById('resource-title').value.trim();var url=document.getElementById('resource-url').value.trim();var fileInput=document.getElementById('resource-file');var file=(state.pendingResourceFile)||(fileInput&&fileInput.files?fileInput.files[0]:null);var handle=state.pendingResourceHandle;if(!sid||!title||(!url&&!file&&!handle)){alert('Ajoute un lien ou un fichier');return}if(!state.resources[sid])state.resources[sid]={};if(!state.resources[sid]['Général'])state.resources[sid]['Général']=[];var r={id:generateId(),title:title,url:url||'',tag:'📚',dateAdded:wwLocalDateISO(new Date()),favorite:false,studied:false,studyMinutes:0};if(file||handle){r.fileKey='rf_'+r.id;r.fileName=(file&&file.name)||'Fichier sélectionné';r.fileType=((file&&file.type)||'').indexOf('pdf')!==-1?'pdf':((file&&file.type)||'').indexOf('word')!==-1?'doc':((file&&file.type)||'').indexOf('image')!==-1?'image':((file&&file.type)||'').indexOf('audio')!==-1?'audio':((file&&file.type)||'').indexOf('video')!==-1?'video':'doc';try{await fileSet(r.fileKey,handle||file)}catch(e){alert('Impossible d’enregistrer le fichier dans le stockage local');return}}state.resources[sid]['Général'].push(r);state.modal=null;state.pendingResourceHandle=null;state.pendingResourceFile=null;showToast('✅ Ressource ajoutée');await saveState();render()}});
+  document.querySelectorAll('#resource-file').forEach(function(el){el.onchange=function(){var f=this.files&&this.files[0];if(f){state.pendingResourceFile=f;state.pendingResourceHandle=null;var nameEl=document.getElementById('resource-file-name');if(nameEl)nameEl.textContent='✓ '+f.name+' — سيتم حفظ نسخة محلية للمتصفح';}}});
   document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=async function(){try{if(supportsFileSystemAccess()){var h=await pickPersistentFile();if(h){state.pendingResourceHandle=h;state.pendingResourceFile=null;var f=await h.getFile();var nameEl=document.getElementById('resource-file-name');if(nameEl)nameEl.textContent='✓ '+f.name+' — fichier externe au stockage de l’application';}}else{var input=document.getElementById('resource-file');if(input)input.click()}}catch(e){if(e&&e.name!=='AbortError')showToast('Impossible de choisir le fichier')}}});
   document.querySelectorAll('[data-open-resource]').forEach(function(el){el.onclick=async function(e){e.stopPropagation();var parts=this.dataset.openResource.split('|');await wwOpenResourceInApp(parts[0],parts[1])}});
   document.querySelectorAll('[data-toggle-studied]').forEach(function(el){el.onclick=function(){var parts=this.dataset.toggleStudied.split('|');var r=null;Object.keys(state.resources[parts[0]]||{}).some(function(f){r=(state.resources[parts[0]][f]||[]).find(function(x){return x.id===parts[1]});return !!r});if(r){r.studied=!r.studied;saveState();render()}}});
@@ -1577,8 +1494,6 @@ if(wwChatbot)wwChatbot.init();
 
 setInterval(function(){if(state.onboardingDone){updateNotifications()}},60000);
 
-wwReaderInit();
-document.addEventListener('keydown',wwReaderEscape);
 wwInitPWA();
 if(window.WWQA)WWQA.init();
 
@@ -1641,8 +1556,8 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'58.0',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:58.0,schemaVersion:3};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'61.5',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:61.5,schemaVersion:3};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
 window.WWResourceAPI={
   getAllResources:getAllResources,

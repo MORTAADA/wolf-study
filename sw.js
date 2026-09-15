@@ -1,12 +1,31 @@
-const CACHE_NAME = "white-wolf-scholar-v53-qa";
+const CACHE_NAME = "white-wolf-scholar-v61.5-qa";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=53.0",
-  "./script.js?v=53.0",
+  "./style.css?v=61.5",
+  "./script.js?v=61.5",
   "./mountain-bg.jpg",
   "./logo.svg",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./modules/core-persistence.js?v=61.5",
+  "./modules/state.js?v=61.5",
+  "./modules/router.js?v=61.5",
+  "./modules/icons.js?v=61.5",
+  "./modules/event-bus.js?v=61.5",
+  "./modules/renderer.js?v=61.5",
+  "./modules/feature-controllers.js?v=61.5",
+  "./modules/reader.js?v=61.5",
+  "./modules/resource-adapter.js?v=61.5",
+  "./modules/pwa.js?v=61.5",
+  "./modules/backup.js?v=61.5",
+  "./modules/global-search.js?v=61.5",
+  "./modules/services.js?v=61.5",
+  "./modules/dependency.js?v=61.5",
+  "./modules/architecture.js?v=61.5",
+  "./modules/chatbot.js?v=61.5",
+  "./modules/qa.js?v=61.5"
 ];
 
 self.addEventListener("install", event => {
@@ -23,7 +42,7 @@ self.addEventListener("activate", event => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
-      .then(clients => clients.forEach(client => client.postMessage({type:"WW_V53_QA_READY"})))
+      .then(clients => clients.forEach(client => client.postMessage({type:"WW_V61_4_QA_READY"})))
   );
 });
 
@@ -39,7 +58,8 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/script.js") ||
     url.pathname.endsWith("/style.css") ||
     url.pathname.endsWith("/sw.js") ||
-    url.pathname.endsWith("/manifest.webmanifest");
+    url.pathname.endsWith("/manifest.webmanifest") ||
+    url.pathname.includes("/modules/");
 
   if (isAppCode) {
     event.respondWith(
