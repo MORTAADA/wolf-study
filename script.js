@@ -1016,8 +1016,30 @@ function renderIntelligenceBrief(){
 
 function wwFocusTopic(){return state.topics.find(function(t){return t.id===wwFocusTopicId})||null}
 function wwSetFocusTopic(id){wwFocusTopicId=id||'';try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){};render()}
+function wwSmartFocusCandidates(){
+  var mission=wwMissionItems().filter(function(x){return !x.done}).map(function(x){return String(x.text||'').toLowerCase()});
+  if(!mission.length)mission=wwMissionItems().map(function(x){return String(x.text||'').toLowerCase()});
+  var topics=state.topics.map(function(t){
+    var sub=state.subjects.find(function(x){return x.id===t.subject_id});
+    var title=String(t.title||'').toLowerCase();
+    var subname=sub?String(sub.name||'').toLowerCase():'';
+    var score=0;
+    mission.forEach(function(m){
+      var words=m.split(/[^\p{L}\p{N}]+/u).filter(function(w){return w.length>=4});
+      words.forEach(function(w){
+        if(title.indexOf(w)>=0)score+=5;
+        if(subname.indexOf(w)>=0)score+=2;
+      });
+    });
+    var p=getProgress(t.id);
+    score+=(4-(p.level||0))*1.5;
+    return{topic:t,score:score};
+  }).sort(function(a,b){return b.score-a.score});
+  return topics.slice(0,5);
+}
+function wwSmartFocusStart(){var candidates=wwSmartFocusCandidates();if(!wwFocusTopicId&&candidates.length)wwFocusTopicId=candidates[0].topic.id;try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId)}catch(e){};if(!pomodoro.isRunning)startPomodoro();}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
-function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V62</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
+function renderFocusCockpit(){var selected=wwFocusTopic(),candidates=wwSmartFocusCandidates(),suggested=!selected&&candidates.length?candidates[0].topic:null;var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');var startLabel=selected?'▶️ Démarrer Focus':(suggested?'⚡ Focus recommandé':'🎯 Démarrer Focus');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Transforme ta mission du jour en session de travail suivie.</div></div><span class="ww-focus-badge">V62.2</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':(suggested?'<div class="ww-focus-selected">⚡ Recommandé aujourd’hui : '+suggested.title+'</div><button class="btn-start ww-focus-start" data-focus-start>'+startLabel+'</button>':'<div class="ww-focus-empty">Choisis un chapitre pour lier le minuteur à ta progression.</div>'))+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1453,7 +1475,7 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pomo-stop]').forEach(function(el){el.onclick=stopPomodoro});
   document.querySelectorAll('[data-pomo-reset]').forEach(function(el){el.onclick=resetPomodoro});
   document.querySelectorAll('[data-pomo-apply]').forEach(function(el){el.onclick=applyPomodoroSettings});
-  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var sel=document.getElementById('ww-focus-topic');wwSetFocusTopic(sel?sel.value:'')};
+  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var sel=document.getElementById('ww-focus-topic');wwSetFocusTopic(sel?sel.value:'')};document.querySelectorAll('[data-focus-start]').forEach(function(el){el.onclick=wwSmartFocusStart});
   document.querySelectorAll('[data-group-toggle]').forEach(function(el){el.onclick=function(){var b=document.getElementById('body-'+this.dataset.groupToggle);if(b)b.classList.toggle('open')}});
   document.querySelectorAll('[data-stats-tab]').forEach(function(el){el.onclick=function(){state.statsTab=this.dataset.statsTab;state.reviewSession=null;render()}});
   document.querySelectorAll('[data-intel-stats]').forEach(function(el){el.onclick=function(e){e.stopPropagation();state.statsTab=this.dataset.intelStats||'overview';state.reviewSession=null;state.route='stats';render()}});
