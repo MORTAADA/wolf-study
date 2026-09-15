@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e14">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<title>White Wolf Scholar</title>
+<link rel="stylesheet" href="style.css?v=61.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="White Wolf Scholar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+<div id="root"></div>
+
+<!-- CHATBOT -->
+<div class="chatbot-fab" id="chatbot-fab" title="Assistant IA">💬</div>
+<div class="chatbot-window" id="chatbot-window">
+  <div class="chatbot-header">
+    <span class="title">🐺 Assistant White Wolf</span>
+    <span class="close-btn" id="chatbot-close">✕</span>
+  </div>
+  <div class="chatbot-messages" id="chatbot-messages">
+    <div class="message bot">🐺 <strong>Bienvenue !</strong><br><br>💡 Tape "aide" pour les commandes<br>🎓 Essaie: "quiz sur la chimie"</div>
+  </div>
+  <div class="chatbot-input">
+    <input type="text" id="chatbot-input" placeholder="Écris ta demande...">
+    <button class="voice-btn" id="voice-btn" title="Commande vocale">🎤</button>
+    <button id="chatbot-send">➤</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="modules/core-persistence.js?v=61.0"></script>
+<script src="modules/state.js?v=61.0"></script>
+<script src="modules/router.js?v=61.0"></script>
+<script src="modules/icons.js?v=61.0"></script>
+<script src="modules/event-bus.js?v=61.0"></script>
+<script src="modules/renderer.js?v=61.0"></script>
+<script src="modules/feature-controllers.js?v=61.0"></script>
+<script src="modules/reader.js?v=61.0"></script>
+<script src="modules/resource-adapter.js?v=61.0"></script>
+<script src="modules/pwa.js?v=61.0"></script>
+<script src="modules/backup.js?v=61.0"></script>
+<script src="modules/global-search.js?v=61.0"></script>
+<script src="modules/services.js?v=61.0"></script>
+<script src="modules/dependency.js?v=61.0"></script>
+<script src="modules/architecture.js?v=61.0"></script>
+<script src="modules/chatbot.js?v=61.0"></script>
+<script src="modules/qa.js?v=61.0"></script>
+<script src="script.js?v=61.0"></script>
+
+<!-- WHITE WOLF V43 — INTERNAL FILE READER -->
+<div id="ww-file-reader" class="ww-file-reader" aria-hidden="true">
+  <div class="ww-file-reader-backdrop" data-reader-close></div>
+  <section class="ww-file-reader-panel" role="dialog" aria-modal="true" aria-label="File reader">
+    <header class="ww-file-reader-header">
+      <button class="ww-reader-btn" id="ww-reader-close" type="button" aria-label="Close">×</button>
+      <div class="ww-reader-title-wrap">
+        <span class="ww-reader-type" id="ww-reader-type">FILE</span>
+        <strong id="ww-reader-title">Resource</strong>
+      </div>
+      <button class="ww-reader-btn" id="ww-reader-external" type="button" aria-label="Open externally" title="Open externally">↗</button>
+    </header>
+    <main id="ww-reader-content" class="ww-file-reader-content"></main>
+    <footer class="ww-file-reader-footer">
+      <span id="ww-reader-status">Ready</span>
+    </footer>
+  </section>
+</div>
+
+
+<!-- WHITE WOLF V45 — BACKUP & RESTORE -->
+<div id="ww-backup-modal" class="ww-backup-modal" aria-hidden="true">
+  <div class="ww-backup-backdrop" data-backup-close></div>
+  <section class="ww-backup-panel" role="dialog" aria-modal="true" aria-label="Backup and Restore">
+    <header class="ww-backup-header">
+      <button class="ww-backup-close" id="ww-backup-close" type="button">×</button>
+      <div>
+        <span class="ww-backup-kicker">WHITE WOLF / DATA SAFETY</span>
+        <h2>Backup & Restore</h2>
+      </div>
+    </header>
+    <main class="ww-backup-body">
+      <div class="ww-backup-card">
+        <div class="ww-backup-icon">↥</div>
+        <div class="ww-backup-copy">
+          <strong>Export your progress</strong>
+          <span>Save your study data as a portable JSON backup.</span>
+        </div>
+        <button class="ww-backup-action" id="ww-backup-export" type="button">EXPORT</button>
+      </div>
+      <div class="ww-backup-card">
+        <div class="ww-backup-icon">↧</div>
+        <div class="ww-backup-copy">
+          <strong>Restore a backup</strong>
+          <span>Import a White Wolf JSON backup without uploading it anywhere.</span>
+        </div>
+        <button class="ww-backup-action" id="ww-backup-import" type="button">IMPORT</button>
+      </div>
+      <input id="ww-backup-file" type="file" accept=".json,application/json" hidden>
+      <div id="ww-backup-status" class="ww-backup-status"></div>
+      <p class="ww-backup-note">Backup files stay on your device unless you choose to share them. File handles for phone resources are not copied into the backup.</p>
+    </main>
+  </section>
+</div>
+
+</body>
+</html>
