@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-// V61.6 Dependency Container — application code consumes stable service contracts.
+// V61.7 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
 if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
@@ -390,7 +390,7 @@ async function getPersistentFile(handle){
    Persistent FileSystemFileHandle is stored; file bytes stay
    in phone storage. Reader uses an object URL only while open.
    ========================================================= */
-/* V61.6 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
+/* V61.7 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
 async function wwOpenResourceInApp(sid,rid){
   var r=null;
   Object.keys(state.resources[sid]||{}).some(function(f){
@@ -1466,36 +1466,16 @@ function attachAppEvents(){
   document.querySelectorAll('[data-add-resource]').forEach(function(el){el.onclick=function(){state.modal={type:'resource'};render()}});
   document.querySelectorAll('[data-save-resource]').forEach(function(el){el.onclick=async function(){var sid=document.getElementById('resource-subject').value;var title=document.getElementById('resource-title').value.trim();var url=document.getElementById('resource-url').value.trim();var fileInput=document.getElementById('resource-file');var file=(state.pendingResourceFile)||(fileInput&&fileInput.files?fileInput.files[0]:null);var handle=state.pendingResourceHandle;if(!sid||!title||(!url&&!file&&!handle)){alert('Ajoute un lien ou un fichier');return}if(!state.resources[sid])state.resources[sid]={};if(!state.resources[sid]['Général'])state.resources[sid]['Général']=[];var r={id:generateId(),title:title,url:url||'',tag:'📚',dateAdded:wwLocalDateISO(new Date()),favorite:false,studied:false,studyMinutes:0};if(file||handle){r.fileKey='rf_'+r.id;r.fileName=(file&&file.name)||'Fichier sélectionné';r.fileType=((file&&file.type)||'').indexOf('pdf')!==-1?'pdf':((file&&file.type)||'').indexOf('word')!==-1?'doc':((file&&file.type)||'').indexOf('image')!==-1?'image':((file&&file.type)||'').indexOf('audio')!==-1?'audio':((file&&file.type)||'').indexOf('video')!==-1?'video':'doc';try{await fileSet(r.fileKey,handle||file)}catch(e){alert('Impossible d’enregistrer le fichier dans le stockage local');return}}state.resources[sid]['Général'].push(r);state.modal=null;state.pendingResourceHandle=null;state.pendingResourceFile=null;showToast('✅ Ressource ajoutée');await saveState();render()}});
   document.querySelectorAll('#resource-file').forEach(function(el){el.onchange=function(){var f=this.files&&this.files[0];if(f){state.pendingResourceFile=f;state.pendingResourceHandle=null;var nameEl=document.getElementById('resource-file-name');if(nameEl)nameEl.textContent='✓ '+f.name+' — سيتم حفظ نسخة محلية للمتصفح';}}});
-  document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=async function(){
+  document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=function(){
     var input=document.getElementById('resource-file');
-    var fallback=function(){if(input){try{input.value='';}catch(ignore){}input.click();}};
-    try{
-      if(supportsFileSystemAccess()){
-        var h=await pickPersistentFile();
-        if(h){
-          try{
-            var f=await h.getFile();
-            state.pendingResourceHandle=h;
-            state.pendingResourceFile=null;
-            var nameEl=document.getElementById('resource-file-name');
-            if(nameEl)nameEl.textContent='✓ '+f.name+' — fichier externe au stockage de l’application';
-            return;
-          }catch(fileErr){
-            console.warn('File System Access getFile failed; fallback to file input.',fileErr);
-            fallback();
-            return;
-          }
-        }
-        // Some installed Android PWAs expose showOpenFilePicker but cannot open it reliably.
-        fallback();
-      }else{
-        fallback();
-      }
-    }catch(e){
-      if(e&&e.name==='AbortError')return;
-      console.warn('File System Access picker failed; fallback to native file input.',e);
-      fallback();
-    }
+    if(!input){showToast('Sélecteur de fichier indisponible');return;}
+    // V61.7 Android/PWA fix: open the native <input type=file> directly from
+    // the user gesture. Waiting for showOpenFilePicker() and then calling
+    // input.click() loses Android's user-activation token, so the fallback
+    // picker may silently do nothing. The native picker is the most reliable
+    // path on installed Android PWAs and its File object is persisted in IDB.
+    try{input.value='';}catch(ignore){}
+    input.click();
   }});
   document.querySelectorAll('[data-open-resource]').forEach(function(el){el.onclick=async function(e){e.stopPropagation();var parts=this.dataset.openResource.split('|');await wwOpenResourceInApp(parts[0],parts[1])}});
   document.querySelectorAll('[data-toggle-studied]').forEach(function(el){el.onclick=function(){var parts=this.dataset.toggleStudied.split('|');var r=null;Object.keys(state.resources[parts[0]]||{}).some(function(f){r=(state.resources[parts[0]][f]||[]).find(function(x){return x.id===parts[1]});return !!r});if(r){r.studied=!r.studied;saveState();render()}}});
