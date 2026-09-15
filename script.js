@@ -1081,7 +1081,7 @@ function wwIntelligenceNextAction(s){
   return{type:'start',title:'Lance une première session',desc:'Aucune session enregistrée cette semaine.',reason:'Le moteur ne détecte pas encore de signal d’activité.',icon:'🚀',button:'Voir le Master',score:best.score,signals:signals};
 }
 function renderIntelligenceBrief(){
-  var s=wwIntelligenceSnapshot(),a=wwIntelligenceNextAction(s),action='';
+  var s=wwIntelSnapshot(),a=wwIntelligenceNextAction(s),action='';
   if(a.type==='exam'&&s.exam)action='<button class="ww-intel-action btn-primary" data-exam-prep="'+s.exam.exam.id+'">'+a.button+' →</button>';
   else if(a.type==='errors')action='<button class="ww-intel-action btn-primary" data-route="stats" data-intel-stats="errors">'+a.button+' →</button>';
   else if(a.type==='topic')action='<button class="ww-intel-action btn-primary" data-route="subject" data-subject-id="'+a.subjectId+'">'+a.button+' →</button>';
