@@ -1,31 +1,31 @@
-const CACHE_NAME = "white-wolf-scholar-v62.5-stable";
+const CACHE_NAME = "white-wolf-scholar-v63.0-stable";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=62.5",
-  "./script.js?v=62.5",
+  "./style.css?v=63.0",
+  "./script.js?v=63.0",
   "./mountain-bg.jpg",
   "./logo.svg",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./modules/core-persistence.js?v=62.5",
-  "./modules/state.js?v=62.5",
-  "./modules/router.js?v=62.5",
-  "./modules/icons.js?v=62.5",
-  "./modules/event-bus.js?v=62.5",
-  "./modules/renderer.js?v=62.5",
-  "./modules/feature-controllers.js?v=62.5",
-  "./modules/reader.js?v=62.5",
-  "./modules/resource-adapter.js?v=62.5",
-  "./modules/pwa.js?v=62.5",
-  "./modules/backup.js?v=62.5",
-  "./modules/global-search.js?v=62.5",
-  "./modules/services.js?v=62.5",
-  "./modules/dependency.js?v=62.5",
-  "./modules/architecture.js?v=62.5",
-  "./modules/chatbot.js?v=62.5",
-  "./modules/qa.js?v=62.5"
+  "./modules/core-persistence.js?v=63.0",
+  "./modules/state.js?v=63.0",
+  "./modules/router.js?v=63.0",
+  "./modules/icons.js?v=63.0",
+  "./modules/event-bus.js?v=63.0",
+  "./modules/renderer.js?v=63.0",
+  "./modules/feature-controllers.js?v=63.0",
+  "./modules/reader.js?v=63.0",
+  "./modules/resource-adapter.js?v=63.0",
+  "./modules/pwa.js?v=63.0",
+  "./modules/backup.js?v=63.0",
+  "./modules/global-search.js?v=63.0",
+  "./modules/services.js?v=63.0",
+  "./modules/dependency.js?v=63.0",
+  "./modules/architecture.js?v=63.0",
+  "./modules/chatbot.js?v=63.0",
+  "./modules/qa.js?v=63.0"
 ];
 
 self.addEventListener("install", event => {
@@ -42,7 +42,7 @@ self.addEventListener("activate", event => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
-      .then(clients => clients.forEach(client => client.postMessage({type:"WW_V62_0_STABLE_READY"})))
+      .then(clients => clients.forEach(client => client.postMessage({type:"WW_V62_6_STABLE_READY"})))
   );
 });
 
