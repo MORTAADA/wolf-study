@@ -6,7 +6,7 @@
 (function(){
   "use strict";
 
-  var R = {root:null,content:null,title:null,type:null,status:null,external:null,currentUrl:null,currentFile:null};
+  var R = {root:null,content:null,title:null,type:null,status:null,external:null,currentUrl:null,currentFile:null,meta:null};
 
   function initReader(){
     R.root=document.getElementById("ww-file-reader");
@@ -48,10 +48,10 @@
     document.body.classList.remove("ww-reader-lock");
   }
 
-  function openShell(file){
+  function openShell(file,meta){
     if(!R.root) initReader();
     revoke();
-    R.currentFile=file;
+    R.currentFile=file; R.meta=meta||null;
     R.title.textContent=file.name||"Resource";
     R.type.textContent=(file.type||"FILE").toUpperCase();
     R.status.textContent=(file.type||"File")+" • "+formatSize(file.size);
@@ -70,13 +70,39 @@
     return (n/1073741824).toFixed(1)+" GB";
   }
 
-  function renderFile(file){
-    openShell(file);
+  function ingestDocument(result){
+    if(!R.meta || !result || !result.text || !global.WWDocumentIntel) return;
+    try{
+      global.WWDocumentIntel.ingest(R.meta,result.text);
+      if(global.state){
+        global.state.chatbotPdfContext={name:R.meta.name||R.currentFile.name||'Document',text:result.text,extractedAt:new Date().toISOString(),method:result.method||'local',resourceId:R.meta.resourceId||null,topicId:R.meta.topicId||null};
+        if(global.saveState)global.saveState();
+      }
+    }catch(e){console.warn('Document intelligence ingest:',e)}
+  }
+  function addTutorButton(container){
+    if(!R.meta || !R.meta.resourceId || !container) return;
+    var b=document.createElement('button'); b.type='button'; b.className='ww-reader-pdf-action'; b.textContent='🐺 Tutoriser ce document';
+    b.addEventListener('click',function(){
+      if(global.WWChatbot && global.WWChatbot.openDocument) global.WWChatbot.openDocument(R.meta.resourceId);
+      else { var fab=document.getElementById('chatbot-fab'); if(fab)fab.click(); }
+    });
+    container.appendChild(b);
+  }
+
+  function renderFile(file,meta){
+    openShell(file,meta);
     var type=file.type||"";
     var name=(file.name||"").toLowerCase();
     var ext=name.includes(".")?name.split(".").pop():"";
 
     if(type==="application/pdf" || ext==="pdf"){
+      var tools=document.createElement("div");
+      tools.className="ww-pdf-tools";
+      var extractBtn=document.createElement("button");
+      extractBtn.type="button"; extractBtn.className="ww-reader-pdf-action"; extractBtn.textContent="🧠 Extraire le texte";
+      var info=document.createElement("span"); info.className="ww-pdf-tool-info"; info.textContent="Analyse locale — aucune donnée envoyée";
+      tools.appendChild(extractBtn); tools.appendChild(info);
       var frame=document.createElement("iframe");
       frame.className="ww-reader-pdf";
       frame.src=R.currentUrl;
@@ -84,14 +110,45 @@
       frame.setAttribute("loading","eager");
       frame.setAttribute("allow","fullscreen");
       frame.addEventListener("error",function(){showUnsupported();});
-      R.content.appendChild(frame);
+      R.content.appendChild(tools); R.content.appendChild(frame);
+      var ocrBtn=document.createElement("button");
+      ocrBtn.type="button"; ocrBtn.className="ww-reader-pdf-action"; ocrBtn.textContent="🔎 OCR du PDF scanné";
+      tools.appendChild(ocrBtn);
+      ocrBtn.addEventListener("click",async function(){
+        if(!window.WWOCR){info.textContent="Module OCR indisponible";return;}
+        ocrBtn.disabled=true; ocrBtn.textContent="⏳ OCR…";
+        try{
+          var result=await window.WWOCR.run(file,function(m){if(m&&m.status==='page')info.textContent="OCR page "+m.current+"/"+m.total;});
+          ingestDocument(result); var pre=document.createElement("pre"); pre.className="ww-reader-text ww-pdf-extracted"; pre.textContent=result.text||"Aucun texte reconnu.";
+          var copy=document.createElement("button"); copy.type="button"; copy.className="ww-reader-pdf-action"; copy.textContent="📋 Copier le texte";
+          copy.addEventListener("click",async function(){try{await navigator.clipboard.writeText(result.text||"");copy.textContent="✓ Copié"}catch(e){copy.textContent="Copie non disponible"}});
+          var wrap=document.createElement("div");wrap.className="ww-pdf-extract-wrap";wrap.appendChild(copy);wrap.appendChild(pre);addTutorButton(wrap);R.content.innerHTML="";R.content.appendChild(wrap);
+          R.status.textContent="OCR local • "+(result.pages||0)+" page(s) • "+(result.text?result.text.length:0)+" caractères";
+          if(window.state){window.state.chatbotPdfContext={name:file.name||"PDF",text:result.text||"",extractedAt:new Date().toISOString(),method:result.method};if(window.saveState)window.saveState();}
+        }catch(err){info.textContent=err&&err.message?err.message:"OCR impossible";}finally{ocrBtn.disabled=false;ocrBtn.textContent="🔎 Réessayer OCR"}
+      });
+      extractBtn.addEventListener("click",async function(){
+        if(!window.WWPDFReader){info.textContent="Extracteur indisponible";return;}
+        extractBtn.disabled=true; extractBtn.textContent="⏳ Extraction…";
+        try{
+          var result=await window.WWPDFReader.extract(file);
+          ingestDocument(result); var pre=document.createElement("pre"); pre.className="ww-reader-text ww-pdf-extracted"; pre.textContent=result.text||"Aucun texte exploitable trouvé. Ce PDF peut être scanné/image ou utiliser un encodage non pris en charge.";
+          var copy=document.createElement("button"); copy.type="button"; copy.className="ww-reader-pdf-action"; copy.textContent="📋 Copier le texte";
+          copy.addEventListener("click",async function(){try{await navigator.clipboard.writeText(result.text||"");copy.textContent="✓ Copié"}catch(e){copy.textContent="Copie non disponible"}});
+          var wrap=document.createElement("div");wrap.className="ww-pdf-extract-wrap";wrap.appendChild(copy);wrap.appendChild(pre);addTutorButton(wrap);R.content.innerHTML="";R.content.appendChild(wrap);
+          R.status.textContent="Texte extrait localement • "+(result.text?result.text.length:0)+" caractères";
+          if(window.state){window.state.chatbotPdfContext={name:file.name||"PDF",text:result.text||"",extractedAt:result.extractedAt};if(window.saveState)window.saveState();}
+        }catch(err){info.textContent=err&&err.message?err.message:"Extraction impossible";extractBtn.disabled=false;extractBtn.textContent="🧠 Réessayer"}
+      });
       return;
     }
 
     if(type.startsWith("image/") || ["png","jpg","jpeg","gif","webp","svg","bmp"].includes(ext)){
-      var img=document.createElement("img");
-      img.src=R.currentUrl; img.alt=file.name;
-      R.content.appendChild(img);
+      var imgTools=document.createElement("div");imgTools.className="ww-pdf-tools";
+      var imgOcr=document.createElement("button");imgOcr.type="button";imgOcr.className="ww-reader-pdf-action";imgOcr.textContent="🔎 Extraire le texte (OCR)";
+      var imgInfo=document.createElement("span");imgInfo.className="ww-pdf-tool-info";imgInfo.textContent="OCR optionnel — traitement local après chargement du moteur";imgTools.appendChild(imgOcr);imgTools.appendChild(imgInfo);R.content.appendChild(imgTools);
+      var img=document.createElement("img");img.src=R.currentUrl;img.alt=file.name;R.content.appendChild(img);
+      imgOcr.addEventListener("click",async function(){imgOcr.disabled=true;imgOcr.textContent="⏳ OCR…";try{var rr=await window.WWOCR.run(file,function(m){if(m&&m.progress)imgInfo.textContent=Math.round(m.progress*100)+" %"});ingestDocument(rr); var pre=document.createElement("pre");pre.className="ww-reader-text ww-pdf-extracted";pre.textContent=rr.text||"Aucun texte reconnu.";R.content.appendChild(pre);if(window.state){window.state.chatbotPdfContext={name:file.name||"Image",text:rr.text||"",extractedAt:new Date().toISOString(),method:rr.method};if(window.saveState)window.saveState();}imgInfo.textContent="OCR terminé"}catch(e){imgInfo.textContent=e&&e.message?e.message:"OCR impossible"}finally{imgOcr.disabled=false;imgOcr.textContent="🔎 Réessayer OCR"}});
       return;
     }
 
@@ -162,8 +219,8 @@
   };
 
   // Public helper for direct File objects, useful for the fallback picker.
-  window.wwOpenFileInReader=function(file,title){
-    if(file) renderFile(file);
+  window.wwOpenFileInReader=function(file,title,meta){
+    if(file) renderFile(file,meta||{name:title||file.name||"Document"});
   };
 
   if(document.readyState==="loading"){

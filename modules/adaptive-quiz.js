@@ -288,5 +288,5 @@
     (topics||[]).forEach(function(t){var n=(BANK[t.id]||[]).length;if(n){covered++;questions+=n}});
     return {topics:total,covered:covered,missing:Math.max(0,total-covered),questions:questions,coveragePercent:total?Math.round(covered/total*100):0};
   }
-  global.WWAdaptiveQuiz={version:'63.6.4',get:get,list:list,all:all,coverage:coverage,targetDifficulty:targetDifficulty,bank:BANK};
+  global.WWAdaptiveQuiz={version:'64.2',get:get,list:list,all:all,coverage:coverage,targetDifficulty:targetDifficulty,bank:BANK};
 })(window);

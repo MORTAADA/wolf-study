@@ -1,0 +1,15 @@
+/* WHITE WOLF SCHOLAR V65.16 — Exam & Problem-Solving Tutor */
+(function(global){'use strict';
+ var VERSION='65.20';
+ function ensure(state){return state.problemSolver||(state.problemSolver={active:false,mode:null,topicId:null,problem:'',step:'identify',attempts:0,hints:0,startedAt:null,checklist:[],lastFeedback:null});}
+ function topic(state,id){return (state.topics||[]).find(function(t){return t.id===id})||null}
+ function start(state,mode,topicObj,problem){var s=ensure(state);s.active=true;s.mode=mode||'solve';s.topicId=topicObj&&topicObj.id||null;s.problem=String(problem||'');s.step='identify';s.attempts=0;s.hints=0;s.startedAt=Date.now();s.checklist=[];s.lastFeedback=null;return s;}
+ function stop(state){var s=ensure(state);s.active=false;return s;}
+ function setStep(state,step){var s=ensure(state);s.step=step;return s;}
+ function rubric(mode){return mode==='exam'?['Compréhension de l’énoncé','Données / inconnues','Modèle ou loi pertinente','Dérivation / calcul','Unités et dimensions','Résultat + interprétation','Contrôle / ordre de grandeur']:['Données','Inconnues','Principe / loi','Équations','Substitution','Unités','Résultat','Vérification'];}
+ function nextStep(state){var s=ensure(state),order=['identify','model','derive','calculate','check','conclude'],i=order.indexOf(s.step);return order[Math.min(order.length-1,Math.max(0,i+1))];}
+ function prompt(state,answer){var s=ensure(state),t=topic(state,s.topicId),steps={identify:'identifie précisément les données, inconnues et unités',model:'choisis et justifie la loi ou le modèle physique/chimique pertinent',derive:'écris la relation symbolique avant de remplacer les valeurs',calculate:'effectue le calcul en gardant les unités et en montrant les étapes',check:'contrôle dimensions, signe et ordre de grandeur',conclude:'donne le résultat avec unité et une interprétation physique/chimique'};return ['Tu es le coach de résolution scientifique de White Wolf Scholar.','MODE: '+s.mode,'CHAPITRE: '+(t?t.title:'non précisé'),'ÉNONCÉ: '+s.problem,'ÉTAPE COURANTE: '+s.step,'OBJECTIF: '+steps[s.step],answer?'TRAVAIL DE L’ÉTUDIANT: '+answer:'','RÈGLE: ne saute pas directement à la solution. Corrige une seule étape à la fois. Si l’étudiant est bloqué, donne un indice progressif. Vérifie unités, dimensions, hypothèses, signes et ordre de grandeur lorsque pertinent.','RÉPONSE ATTENDUE: feedback bref + verdict (correct|partial|incorrect) + prochaine étape + un seul indice si nécessaire.'].join('\n\n');}
+ function examPrompt(state,answer){var s=ensure(state);return prompt(state,answer)+'\n\nMODE EXAMEN: sois plus strict sur justification, temps, unités et contrôle final; ne révèle pas la solution complète avant que l’étudiant ait tenté l’étape actuelle.';}
+ function snapshot(state){var s=ensure(state);return {active:!!s.active,mode:s.mode,topicId:s.topicId,step:s.step,attempts:s.attempts,hints:s.hints,checklist:s.checklist,lastFeedback:s.lastFeedback};}
+ global.WWProblemTutor={version:VERSION,ensure:ensure,start:start,stop:stop,setStep:setStep,nextStep:nextStep,rubric:rubric,prompt:prompt,examPrompt:examPrompt,snapshot:snapshot};
+})(window);

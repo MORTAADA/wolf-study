@@ -1,0 +1,17 @@
+/* WHITE WOLF V64.9 — OCR bridge for scanned documents (optional online engine) */
+(function(global){'use strict';
+  var TESS_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  var PDFJS_URL='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs';
+  var PDFWORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+  var MAX_IMAGE_PIXELS=16000000, MAX_PAGES=6;
+  var tesseractPromise=null, pdfPromise=null;
+  function loadScript(url){return new Promise(function(resolve,reject){var s=document.createElement('script');s.src=url;s.async=true;s.onload=function(){resolve(global.Tesseract)};s.onerror=function(){reject(new Error('OCR engine indisponible. Vérifie la connexion internet.'))};document.head.appendChild(s)})}
+  function loadTesseract(){if(global.Tesseract)return Promise.resolve(global.Tesseract);if(!tesseractPromise)tesseractPromise=loadScript(TESS_URL);return tesseractPromise}
+  function loadPdf(){if(global.pdfjsLib)return Promise.resolve(global.pdfjsLib);if(pdfPromise)return pdfPromise;pdfPromise=import(PDFJS_URL).then(function(m){var p=m&&m.default?m.default:m;try{p.GlobalWorkerOptions.workerSrc=PDFWORKER}catch(e){}global.pdfjsLib=p;return p});return pdfPromise}
+  function canvasFromImage(file){return new Promise(function(resolve,reject){var img=new Image(),url=URL.createObjectURL(file);img.onload=function(){try{var scale=Math.min(1,Math.sqrt(MAX_IMAGE_PIXELS/(img.naturalWidth*img.naturalHeight)));var c=document.createElement('canvas');c.width=Math.max(1,Math.floor(img.naturalWidth*scale));c.height=Math.max(1,Math.floor(img.naturalHeight*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c)}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('Image illisible'))};img.src=url})}
+  async function recognizeCanvas(canvas,onProgress){var T=await loadTesseract();var worker=await T.createWorker('fra+eng',1,{logger:function(m){if(onProgress&&m)onProgress(m)}});try{var r=await worker.recognize(canvas);return (r&&r.data&&r.data.text)||''}finally{try{await worker.terminate()}catch(e){}}}
+  async function image(file,onProgress){var c=await canvasFromImage(file);var text=await recognizeCanvas(c,onProgress);return {text:text.trim(),pages:1,method:'tesseract.js',source:file.name||'image'}}
+  async function pdf(file,onProgress){var pdfjs=await loadPdf(),data=await file.arrayBuffer(),doc=await pdfjs.getDocument({data:data}).promise,pages=Math.min(doc.numPages,MAX_PAGES),parts=[];for(var i=1;i<=pages;i++){if(onProgress)onProgress({status:'page',current:i,total:pages});var page=await doc.getPage(i),vp=page.getViewport({scale:1.5});var c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;var t=await recognizeCanvas(c,onProgress);if(t.trim())parts.push('--- Page '+i+' ---\n'+t.trim())}return {text:parts.join('\n\n'),pages:pages,method:'pdf.js + tesseract.js',source:file.name||'PDF'}}
+  async function run(file,onProgress){if(!file)throw new Error('Fichier manquant');var n=(file.name||'').toLowerCase();if(file.type==='application/pdf'||n.endsWith('.pdf'))return pdf(file,onProgress);if(/^image\//.test(file.type)||/\.(png|jpe?g|webp|bmp|gif)$/i.test(n))return image(file,onProgress);throw new Error('OCR disponible pour PDF et images.')} 
+  global.WWOCR={run:run,available:function(){return !!global.Tesseract},version:'64.9'};
+})(window);
