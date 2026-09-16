@@ -1629,3 +1629,72 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
   .ww-scope-actions .btn-small{flex:1;min-height:44px}
   .subject-grid{grid-template-columns:1fr;gap:8px}
 }
+
+/* V64.0 — Academic Chatbot 2.0 */
+.chatbot-header .title small{font-size:10px;opacity:.65;margin-left:4px;font-weight:500}
+.chatbot-quick-actions{display:flex;gap:6px;padding:8px;overflow-x:auto;background:#101923;border-bottom:1px solid #263342;scrollbar-width:none}
+.chatbot-quick-actions::-webkit-scrollbar{display:none}
+.chatbot-quick-actions button{border:1px solid #30435b;background:#172333;color:#cfe0f5;border-radius:14px;padding:7px 10px;white-space:nowrap;font-size:11px;cursor:pointer}
+.chatbot-quick-actions button:active{transform:scale(.98)}
+.chatbot-clear{border:0;border-top:1px solid #263342;background:#111a24;color:#71859e;font-size:11px;padding:6px;cursor:pointer}
+.chatbot-clear:hover{color:#dce8f7}
+.chatbot-messages .message{max-width:92%;line-height:1.55}
+.chatbot-messages .message.bot{border-left:2px solid #4b7bec}
+@media(max-width:600px){.chatbot-quick-actions{padding:7px 6px}.chatbot-quick-actions button{font-size:10px;padding:7px 9px}.chatbot-clear{min-height:32px}}
+/* V64.2 Chatbot 2.1 */
+.chatbot-window{backdrop-filter:blur(10px)}
+.chatbot-header .title{letter-spacing:.1px}
+.chatbot-quick-actions{border-bottom:1px solid #30435b}
+.chatbot-quick-actions button{min-height:36px;transition:transform .15s,border-color .15s}
+.chatbot-quick-actions button:hover{border-color:#4b7bec;transform:translateY(-1px)}
+.chatbot-messages .message.user{margin-left:auto;background:#1a2a40;border-radius:16px 16px 4px 16px;padding:9px 12px;margin-bottom:9px}
+.chatbot-messages .message.bot{background:#121d29;border-radius:4px 16px 16px 16px;padding:10px 12px;margin-bottom:10px}
+.chatbot-clear{min-height:34px}
+@media(max-width:600px){.chatbot-window{height:min(620px,78vh)!important}.chatbot-messages{padding:12px}.chatbot-quick-actions button{min-height:38px}}
+
+/* V64.6 — Tutor feedback */
+.chatbot-window .message.bot strong{font-weight:800}
+.chatbot-window .message.bot{line-height:1.55}
+@media(max-width:600px){.chatbot-window{width:calc(100vw - 20px);right:10px;bottom:76px}.chatbot-input input{font-size:16px}}
+/* V64.6 — Scientific PDF Reader */
+.ww-pdf-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:rgba(10,14,20,.94);border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2}
+.ww-reader-pdf-action{border:1px solid rgba(143,179,230,.28);background:rgba(75,123,236,.12);color:#eef4ff;border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:700}
+.ww-reader-pdf-action:disabled{opacity:.55;cursor:wait}
+.ww-pdf-tool-info{font-size:11px;opacity:.62}
+.ww-pdf-extract-wrap{width:min(980px,100%);margin:0 auto;padding:12px}
+.ww-pdf-extracted{max-height:calc(100vh - 150px);margin-top:10px}
+@media(max-width:700px){.ww-pdf-tools{padding:8px}.ww-reader-pdf-action{min-height:42px}.ww-pdf-extracted{max-height:calc(100vh - 145px)}}
+/* V64.7 OCR */
+.ww-pdf-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.ww-reader-pdf-action:disabled{opacity:.6;cursor:wait}.ww-pdf-tool-info{font-size:.78rem;opacity:.72}.ww-pdf-extracted{white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow:auto}
+/* V64.9 — Document → Topic mapping */
+.ww-docmap-modal{max-width:760px}
+.ww-docmap-summary{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;padding:10px;border:1px solid rgba(143,179,230,.16);border-radius:12px;background:rgba(143,179,230,.05)}
+.ww-docmap-summary span{font-size:12px;color:#aebed2}
+.ww-docmap-list{display:grid;gap:9px;max-height:52vh;overflow:auto;padding-right:2px}
+.ww-docmap-row{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:10px;align-items:center;padding:11px;border:1px solid rgba(143,179,230,.12);border-radius:12px;background:rgba(10,14,20,.5)}
+.ww-docmap-title{min-width:0}.ww-docmap-title strong{display:block;font-size:14px;line-height:1.35}.ww-docmap-title small{display:block;margin-top:4px;color:#8295ad;font-size:11px}
+.ww-docmap-row select{min-width:0}
+@media(max-width:620px){.ww-docmap-row{grid-template-columns:1fr}.ww-docmap-list{max-height:55vh}}
+/* V65.1 Section Tutor */
+.ww-section-tutor-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(75,123,236,.12);border:1px solid rgba(143,179,230,.2);font-size:12px}
+
+.ww-ai-settings-modal{max-width:520px}.ww-ai-toggle{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #263750;border-radius:12px;background:rgba(8,16,28,.7);font-weight:700}.ww-ai-toggle input{width:20px;height:20px}.ww-ai-settings-modal label{display:grid;gap:7px}.ww-ai-settings-modal input,.ww-ai-settings-modal select{width:100%;box-sizing:border-box}@media(max-width:520px){.ww-ai-settings-modal{width:calc(100vw - 24px);padding:16px}}
+
+/* V65.5 — Socratic Tutor */
+.chatbot-socratic-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid #30435b;border-radius:12px;padding:3px 7px;font-size:10px;color:#cfe0f5;background:#172333}
+@media(max-width:600px){.chatbot-socratic-badge{font-size:9px}}
+
+/* V65.9 — Tutor Session Dashboard & Replay */
+.ww-tutor-session-hero{border-color:rgba(143,179,230,.22)}
+.ww-tutor-session-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.ww-tutor-session-kpis span{padding:10px;border:1px solid rgba(143,179,230,.12);border-radius:12px;background:rgba(10,14,20,.42);font-size:11px;color:#93a7bf;text-align:center}
+.ww-tutor-session-kpis b{display:block;color:#eef4ff;font-size:18px;margin-bottom:3px}
+.ww-tutor-active-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(76,190,126,.08);border:1px solid rgba(76,190,126,.18);font-size:12px}
+.ww-tutor-session-row{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid rgba(143,179,230,.12);background:rgba(10,14,20,.38);color:inherit;border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
+.ww-tutor-session-row:hover{border-color:rgba(143,179,230,.32);transform:translateY(-1px)}
+.ww-tutor-session-main{min-width:0;flex:1}.ww-tutor-session-main strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ww-tutor-session-main small{display:block;color:#8194ac;margin-top:4px;font-size:10px}
+.ww-tutor-session-score{font-weight:800;font-size:17px;text-align:right}.ww-tutor-session-score span{display:block;font-size:9px;color:#8194ac;font-weight:500}
+.ww-tutor-replay-modal{max-width:700px}.ww-tutor-replay-kicker{font-size:10px;letter-spacing:1.4px;color:#8fb3e6;margin-bottom:6px}.ww-tutor-replay-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.ww-tutor-replay-grid>div{padding:11px;border-radius:11px;border:1px solid rgba(143,179,230,.13);text-align:center}.ww-tutor-replay-grid b{display:block;font-size:20px}.ww-tutor-replay-grid span{font-size:10px;color:#8194ac}.ww-tutor-replay-section{margin-top:12px;padding:12px;border-radius:12px;background:rgba(10,14,20,.42);border:1px solid rgba(143,179,230,.1)}.ww-tutor-replay-section>strong{display:block;margin-bottom:7px}.ww-tutor-replay-section p{margin:0;color:#aebed2;font-size:12px;line-height:1.5}.ww-tutor-replay-section pre{white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;font-size:10px;color:#aebed2;margin:0}.ww-tutor-replay-action{display:grid;gap:3px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}.ww-tutor-replay-action:last-child{border-bottom:0}.ww-tutor-replay-action span{font-size:11px;color:#8194ac}
+@media(max-width:620px){.ww-tutor-session-kpis,.ww-tutor-replay-grid{grid-template-columns:repeat(2,1fr)}.ww-tutor-session-row{padding:11px 9px}.ww-tutor-session-score{font-size:15px}}
+
+.ww-tutor-profile-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.ww-tutor-profile-kpis span{padding:10px;border:1px solid rgba(143,179,230,.12);border-radius:12px;text-align:center;font-size:11px;color:#93a7bf}.ww-tutor-profile-kpis b{display:block;color:#eef4ff;font-size:17px;margin-bottom:3px}.ww-tutor-profile p{margin:10px 0 0}@media(max-width:620px){.ww-tutor-profile-kpis{grid-template-columns:1fr 1fr}.ww-tutor-profile-kpis span:last-child{grid-column:1/-1}}

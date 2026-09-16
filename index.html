@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="theme-color" content="#0a0e14">
-<meta name="ww-release" content="63.6.4-stable">
+<meta name="ww-release" content="65.20-stable">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <title>White Wolf Scholar</title>
-<link rel="stylesheet" href="style.css?v=63.6.4">
+<link rel="stylesheet" href="style.css?v=65.20">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,12 +22,11 @@
 <div class="chatbot-fab" id="chatbot-fab" title="Assistant IA">💬</div>
 <div class="chatbot-window" id="chatbot-window">
   <div class="chatbot-header">
-    <span class="title">🐺 Assistant White Wolf</span>
+    <span class="title">🐺 White Wolf Academic Assistant <small>V64</small></span>
     <span class="close-btn" id="chatbot-close">✕</span>
   </div>
-  <div class="chatbot-messages" id="chatbot-messages">
-    <div class="message bot">🐺 <strong>Bienvenue !</strong><br><br>💡 Tape "aide" pour les commandes<br>🎓 Essaie: "quiz sur la chimie"</div>
-  </div>
+  <div class="chatbot-messages" id="chatbot-messages"></div>
+  <button type="button" id="chatbot-clear" class="chatbot-clear">Effacer la conversation</button>
   <div class="chatbot-input">
     <input type="text" id="chatbot-input" placeholder="Écris ta demande...">
     <button class="voice-btn" id="voice-btn" title="Commande vocale">🎤</button>
@@ -38,28 +37,49 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="modules/core-persistence.js?v=63.6.4" defer></script>
-<script src="modules/state.js?v=63.6.4" defer></script>
-<script src="modules/router.js?v=63.6.4" defer></script>
-<script src="modules/icons.js?v=63.6.4" defer></script>
-<script src="modules/event-bus.js?v=63.6.4" defer></script>
-<script src="modules/renderer.js?v=63.6.4" defer></script>
-<script src="modules/feature-controllers.js?v=63.6.4" defer></script>
-<script src="modules/reader.js?v=63.6.4" defer></script>
-<script src="modules/resource-adapter.js?v=63.6.4" defer></script>
-<script src="modules/pwa.js?v=63.6.4" defer></script>
-<script src="modules/backup.js?v=63.6.4" defer></script>
-<script src="modules/global-search.js?v=63.6.4" defer></script>
-<script src="modules/services.js?v=63.6.4" defer></script>
-<script src="modules/dependency.js?v=63.6.4" defer></script>
-<script src="modules/architecture.js?v=63.6.4" defer></script>
-<script src="modules/chatbot.js?v=63.6.4" defer></script>
-<script src="modules/mastery-engine.js?v=63.6.4" defer></script>
-  <script src="modules/adaptive-revision.js?v=63.6.4" defer></script>
-<script src="modules/adaptive-quiz.js?v=63.6.4" defer></script>
-<script src="modules/analytics-engine.js?v=63.6.4" defer></script>
-<script src="modules/qa.js?v=63.6.4" defer></script>
-<script src="script.js?v=63.6.4" defer></script>
+<script src="modules/core-persistence.js?v=65.20" defer></script>
+<script src="modules/state.js?v=65.20" defer></script>
+<script src="modules/router.js?v=65.20" defer></script>
+<script src="modules/icons.js?v=65.20" defer></script>
+<script src="modules/event-bus.js?v=65.20" defer></script>
+<script src="modules/renderer.js?v=65.20" defer></script>
+<script src="modules/feature-controllers.js?v=65.20" defer></script>
+<script src="modules/pdf-reader.js?v=65.20" defer></script>
+<script src="modules/ocr-reader.js?v=65.20" defer></script>
+<script src="modules/reader.js?v=65.20" defer></script>
+<script src="modules/resource-adapter.js?v=65.20" defer></script>
+<script src="modules/pwa.js?v=65.20" defer></script>
+<script src="modules/backup.js?v=65.20" defer></script>
+<script src="modules/global-search.js?v=65.20" defer></script>
+<script src="modules/services.js?v=65.20" defer></script>
+<script src="modules/dependency.js?v=65.20" defer></script>
+<script src="modules/architecture.js?v=65.20" defer></script>
+<script src="modules/chatbot-evaluator.js?v=65.20" defer></script>
+<script src="modules/document-intelligence.js?v=65.20" defer></script>
+<script src="modules/document-map.js?v=65.20" defer></script>
+<script src="modules/section-tutor.js?v=65.20" defer></script>
+<script src="modules/learning-loop.js?v=65.20" defer></script>
+<script src="modules/chatbot-context.js?v=65.20" defer></script>
+<script src="modules/chatbot-modes.js?v=65.20" defer></script>
+<script src="modules/chatbot-actions.js?v=65.20" defer></script>
+<script src="modules/ai-gateway.js?v=65.20" defer></script>
+<script src="modules/chatbot-student-model.js?v=65.20" defer></script>
+<script src="modules/chatbot-memory.js?v=65.20" defer></script>
+<script src="modules/tutor-knowledge-graph.js?v=65.20" defer></script>
+<script src="modules/prerequisite-intelligence.js?v=65.20" defer></script>
+<script src="modules/adaptive-teaching.js?v=65.20" defer></script>
+<script src="modules/tutor-orchestrator.js?v=65.20" defer></script>
+<script src="modules/tutor-session.js?v=65.20" defer></script>
+<script src="modules/problem-solving-tutor.js?v=65.20" defer></script>
+<script src="modules/tutor-dashboard.js?v=65.20" defer></script>
+<script src="modules/tutor-hardening.js?v=65.20" defer></script>
+<script src="modules/chatbot.js?v=65.20" defer></script>
+<script src="modules/mastery-engine.js?v=65.20" defer></script>
+  <script src="modules/adaptive-revision.js?v=65.20" defer></script>
+<script src="modules/adaptive-quiz.js?v=65.20" defer></script>
+<script src="modules/analytics-engine.js?v=65.20" defer></script>
+<script src="modules/qa.js?v=65.20" defer></script>
+<script src="script.js?v=65.20" defer></script>
 
 <!-- WHITE WOLF V43 — INTERNAL FILE READER -->
 <div id="ww-file-reader" class="ww-file-reader" aria-hidden="true">
