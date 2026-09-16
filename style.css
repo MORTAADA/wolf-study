@@ -1607,3 +1607,25 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .ww-scope-topic-list{display:grid;gap:7px;margin-top:9px}.ww-scope-topic{padding:9px 0}.ww-scope-topic+ .ww-scope-topic{border-top:1px solid rgba(143,179,230,.07)}
 .ww-scope-dashboard-link{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;color:#8ba2c0;font-size:11px}
 @media(max-width:600px){.ww-scope-banner{align-items:flex-start}.ww-scope-head{align-items:flex-start}.ww-scope-subject-head{align-items:flex-start}.ww-scope-toggle{padding:8px 9px}.ww-scope-dashboard-link{margin:8px 0 12px}}
+
+/* V63.6.2 — Mobile-only study-scope subject rows */
+.ww-scope-mobile-row{display:none}
+.ww-scope-desktop-content{display:block}
+.ww-scope-mobile-icon,.ww-scope-mobile-chevron{display:none}
+@media(max-width:600px){
+  .ww-scope-card{padding:0;overflow:hidden;border-right:0;border-left:2px solid rgba(75,123,236,.22);border-radius:17px;background:rgba(7,18,30,.88)}
+  .ww-scope-mobile-row{display:flex;align-items:center;gap:10px;min-height:88px;padding:10px 11px 10px 10px}
+  .ww-scope-desktop-content{display:none}
+  .ww-scope-mobile-icon{display:flex;align-items:center;justify-content:center;flex:0 0 50px;width:50px;height:50px;border-radius:14px;background:linear-gradient(145deg,rgba(75,123,236,.24),rgba(75,123,236,.07));border:1px solid rgba(75,123,236,.28);font-size:24px;box-shadow:inset 0 0 18px rgba(75,123,236,.08)}
+  .ww-scope-mobile-main{min-width:0;flex:1}
+  .ww-scope-mobile-title{font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.18;white-space:normal}
+  .ww-scope-mobile-code{font-size:10px;color:#6f86a4;margin-top:3px}
+  .ww-scope-mobile-progress{display:grid;grid-template-columns:auto minmax(50px,1fr) auto;align-items:center;gap:6px;margin-top:7px;font-size:9px;color:#8ba2c0}
+  .ww-scope-mobile-progress .progress-bar{margin:0!important;height:6px;min-width:0}
+  .ww-scope-mobile-progress .fill{height:100%}
+  .ww-scope-mobile-row .ww-scope-toggle{flex:0 0 auto;padding:7px 8px;font-size:10px}
+  .ww-scope-mobile-chevron{display:block;flex:0 0 auto;font-size:27px;line-height:1;color:#6f9edb;margin-left:-2px}
+  .ww-scope-actions{justify-content:stretch}
+  .ww-scope-actions .btn-small{flex:1;min-height:44px}
+  .subject-grid{grid-template-columns:1fr;gap:8px}
+}
