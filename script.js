@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-// V63.0 Dependency Container — application code consumes stable service contracts.
+// V63.5 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
 if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
@@ -390,7 +390,7 @@ async function getPersistentFile(handle){
    Persistent FileSystemFileHandle is stored; file bytes stay
    in phone storage. Reader uses an object URL only while open.
    ========================================================= */
-/* V63.0 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
+/* V63.2 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
 async function wwOpenResourceInApp(sid,rid){
   var r=null;
   Object.keys(state.resources[sid]||{}).some(function(f){
@@ -437,6 +437,7 @@ function getProgress(topicId){return state.progress[topicId]||{level:0,score:0,l
 function wwMasteryData(topicId){return window.WWMastery?window.WWMastery.ensure(state,topicId):null}
 function wwMasteryScore(topicId){return window.WWMastery?window.WWMastery.score(state,topicId):computeMasteryScore(topicId)}
 function wwMasteryRecommendedStage(topicId){return window.WWMastery?window.WWMastery.recommendedStage(state,topicId):getProgress(topicId).level}
+function wwAdaptiveSummary(){return window.WWAdaptiveRevision?window.WWAdaptiveRevision.summary(state):{queue:[],total:0,estimatedMinutes:0,errors:0,topics:0}}
 function getSubjectProgress(subjectId){var tops=state.topics.filter(function(t){return t.subject_id===subjectId});if(!tops.length)return 0;var total=0;tops.forEach(function(t){total+=getProgress(t.id).level});return Math.round((total/(tops.length*4))*100)}
 function computeMasteryScore(topicId){var p=getProgress(topicId);return Math.min(p.level*25+20,100)}
 function getTasksForToday(){var today=wwLocalDateISO(new Date());return state.tasks.filter(function(t){return t.date===today&&!t.isDone})}
@@ -772,7 +773,7 @@ function getErrorsDueToday(){var now=Date.now();return (state.errors||[]).filter
 function getErrorsByStatus(status){if(status==='all')return state.errors||[];return (state.errors||[]).filter(function(e){return e.status===status})}
 function computeErrorStats(){var s={to_review:0,in_progress:0,mastered:0};(state.errors||[]).forEach(function(e){if(s[e.status]!==undefined)s[e.status]++});return s}
 function scheduleNextReview(error){var days=2;if(error.status==='in_progress')days=7;else if(error.status==='mastered')days=30;var d=new Date();d.setDate(d.getDate()+days);error.next_review=wwLocalDateISO(d)}
-function addError(desc,subjectId,cause,correction,difficulty,topicId){var err={id:'err_'+generateId(),description:desc,subject_id:subjectId||null,topic_id:topicId||null,cause:cause||'other',correction:correction||'',difficulty:difficulty||'medium',status:'to_review',revisions:0,max_revisions:3,created_at:wwLocalDateISO(new Date()),last_reviewed:null,next_review:wwLocalDateISO(new Date())};if(err.topic_id){var tt=state.topics.find(function(x){return x.id===err.topic_id});if(tt)err.subject_id=tt.subject_id||err.subject_id}state.errors.push(err);if(window.WWMastery)window.WWMastery.recordError(state,err.topic_id||null);scheduleNextReview(err);saveState();return err}
+function addError(desc,subjectId,topicId,cause,correction,difficulty){var err={id:'err_'+generateId(),description:desc,subject_id:subjectId||null,topic_id:topicId||null,cause:cause||'other',correction:correction||'',difficulty:difficulty||'medium',status:'to_review',revisions:0,max_revisions:3,created_at:wwLocalDateISO(new Date()),last_reviewed:null,next_review:wwLocalDateISO(new Date())};state.errors.push(err);if(window.WWMastery)window.WWMastery.recordError(state,err.topic_id||null);scheduleNextReview(err);saveState();return err}
 function reviewError(id,success){var err=(state.errors||[]).find(function(e){return e.id===id});if(!err)return;err.last_reviewed=wwLocalDateISO(new Date());if(window.WWMastery)window.WWMastery.recordReview(state,err.topic_id||null,success);if(success){err.revisions++;if(err.revisions>=err.max_revisions)err.status='mastered';else err.status='in_progress'}else{err.revisions=0;err.status='to_review'}scheduleNextReview(err);saveState()}
 function getErrorSubjectName(err){if(err.subject_id){var s=(state.subjects||[]).find(function(x){return x.id===err.subject_id});if(s)return s.name}return 'Autre'}
 function getCauseLabel(cause){var l={forgot_formula:'نسيت الصيغة',confusion:'خلط بين مفهومين',calculation:'خطأ في الحساب',reading:'سوء قراءة السؤال',methodology:'منهجية خاطئة',other:'سبب آخر'};return l[cause]||'Autre'}
@@ -948,7 +949,7 @@ function renderDashboardExams(){
 }
 
 // ============================================================
-// WHITE WOLF V63.0 — ACADEMIC INTELLIGENCE 3.0
+// WHITE WOLF V63.2 — ACADEMIC INTELLIGENCE 3.0
 // Academic Command Center: Planning + Sessions + Errors + Mastery + Exams + Tasks + Mission.
 // Recommendations are explainable and never modify the Planning Hebdo.
 // ============================================================
@@ -970,7 +971,7 @@ function renderIntelligenceBrief(){var s=wwIntelSnapshot(),a=wwIntelligenceNextA
 function wwFocusTopic(){return state.topics.find(function(t){return t.id===wwFocusTopicId})||null}
 function wwSetFocusTopic(id){wwFocusTopicId=id||'';try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){};render()}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,subject_id:topic.subject_id||null,date:today,duration:duration,source:'focus',started_at:new Date().toISOString(),ended_at:new Date(Date.now()+duration*60000).toISOString()});if(window.WWMastery)window.WWMastery.recordSession(state,topic.id,duration);state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=wwMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
-function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V63.0</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
+function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V63.2</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1012,7 +1013,7 @@ function renderDashboard(){
       (tasks.length?tasks.map(function(t){return '<div class="task-item"><div class="task-left"><div class="task-text">'+t.text+'</div><div class="task-meta">'+(t.time||'')+' • '+t.priority+'</div></div><div class="task-right"><span class="task-priority '+t.priority+'">'+t.priority+'</span><button class="btn-small btn-outline" data-task-done="'+t.id+'">✅</button><button class="btn-small btn-outline" data-task-delete="'+t.id+'">🗑️</button></div></div>'}).join(''):'<div class="text-muted text-small">Aucune tâche.</div>')+
     '</div>'+
     (hasRev&&state.settings.showSmartRevision?'<div class="card"><div class="card-title">🧠 À réviser <span class="badge">'+Object.keys(rev).reduce(function(a,k){return a+rev[k].length},0)+'</span></div>'+Object.keys(rev).map(function(sid){var items=rev[sid];var s=state.subjects.find(function(x){return x.id===sid});return '<div class="revision-group"><div class="revision-group-header" data-group-toggle="'+sid+'"><div><span class="group-title">📖 '+(s?s.name:'Matière')+'</span><span class="group-meta"> • '+items.length+'</span></div><span class="group-meta">▼</span></div><div class="revision-group-body" id="body-'+sid+'">'+items.map(function(r){return '<div class="revision-item"><div><div class="name">'+r.title+'</div><div class="sub">📅 '+r.daysSinceLastStudy+' jours · Niveau '+r.level+'/4</div></div><button class="btn-small btn-outline" data-session-topic="'+r.topicId+'">🔄</button></div>'}).join('')+'</div></div>'}).join('')+'</div>':'')+
-    renderFocusCockpit()+    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
+    renderAdaptiveRevisionCard()+renderFocusCockpit()+    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
   '</div>';
 }
 
@@ -1235,14 +1236,111 @@ function renderPersonalAnalytics(){
   var hardHTML=hard.length?hard.map(function(x){var t=x.mastery;return '<div class="ww-a-hard"><div><b>'+x.name+'</b><small>'+x.errors+' erreur'+(x.errors!==1?'s':'')+' · '+x.sessions+' sessions · '+x.minutes+' min</small></div><span>Niv. '+t+'/4</span><strong>'+x.score+'%</strong></div>'}).join(''):'<div class="chart-empty">Pas encore assez de données par chapitre.</div>';
   var distHTML=dist.map(function(n,i){return '<div class="ww-a-stage"><span>'+['Pas commencé','Compréhension','Application','Exercices','Autonomie'][i]+'</span><b>'+n+'</b><i><em style="width:'+Math.round(n/totalMastery*100)+'%"></em></i></div>'}).join('');
   return '<div class="ww-analytics-v29">'+
-    '<div class="ww-a-hero card"><div class="ww-a-head"><div><div class="card-title">📊 Study Analytics</div><div class="ww-a-sub">Mesures descriptives basées sur les sessions réellement enregistrées.</div></div><span class="ww-a-live">V63.0</span></div><div class="ww-a-kpis"><div><b>'+q.totalHours+'h</b><span>Temps réel total</span></div><div><b>'+q.sessions+'</b><span>Sessions</span></div><div><b>'+q.weekMinutes+'m</b><span>7 derniers jours</span></div><div><b>'+q.streak+'</b><span>Jours de série</span></div></div></div>'+
+    '<div class="ww-a-hero card"><div class="ww-a-head"><div><div class="card-title">📊 Study Analytics</div><div class="ww-a-sub">Mesures descriptives basées sur les sessions réellement enregistrées.</div></div><span class="ww-a-live">V63.2</span></div><div class="ww-a-kpis"><div><b>'+q.totalHours+'h</b><span>Temps réel total</span></div><div><b>'+q.sessions+'</b><span>Sessions</span></div><div><b>'+q.weekMinutes+'m</b><span>7 derniers jours</span></div><div><b>'+q.streak+'</b><span>Jours de série</span></div></div></div>'+
     '<div class="ww-a-compare card"><div class="card-title">↔️ Comparaison hebdomadaire</div><div class="ww-a-compare-grid"><div><small>Cette semaine</small><b>'+cmp.current.minutes+' min</b><span>'+cmp.current.activeDays+' jours actifs</span></div><div><small>Semaine précédente</small><b>'+cmp.previous.minutes+' min</b><span>'+cmp.previous.activeDays+' jours actifs</span></div><div class="ww-a-delta '+deltaClass+'"><small>Écart</small><b>'+delta+'</b><span>temps d’étude</span></div></div></div>'+
     '<div class="card"><div class="card-title">⏱️ Activité — 14 derniers jours</div><div class="ww-a-series">'+seriesHTML+'</div><div class="ww-a-legend">Chaque barre représente uniquement le temps contenu dans les sessions enregistrées.</div></div>'+
     '<div class="card"><div class="card-title">🧠 Répartition de la maîtrise</div><div class="ww-a-mastery-note"><b>'+mastered+'/'+totalMastery+'</b> chapitres au niveau Autonomie · '+active+'/7 jours actifs cette semaine.</div><div class="ww-a-stages">'+distHTML+'</div></div>'+
     '<div class="card"><div class="card-title">⚠️ Chapitres demandant le plus de travail</div><div class="ww-a-note">Signal descriptif combinant erreurs non maîtrisées, volume d’erreurs et score de maîtrise. Ce n’est pas une note.</div><div class="ww-a-hard-list">'+hardHTML+'</div></div>'+
     '<div class="card"><div class="card-title">📚 Temps par matière</div>'+(subHTML||'<div class="chart-empty">Aucune session liée à une matière.</div>')+'</div>'+
-    '<div class="card"><div class="card-title">🛡️ Qualité des données</div><div class="ww-a-error-grid"><div><b>'+q.quality.valid+'</b><span>sessions valides</span></div><div><b>'+q.quality.invalid+'</b><span>sessions ignorées</span></div><div><b>'+q.quality.orphanTopicSessions+'</b><span>liens chapitre introuvables</span></div><div><b>'+q.quality.sessions+'</b><span>sessions brutes</span></div></div></div><div class="card"><div class="card-title">🔁 Erreurs & révisions</div><div class="ww-a-error-grid"><div><b>'+q.errors.total+'</b><span>erreurs enregistrées</span></div><div><b>'+q.errors.due+'</b><span>à revoir</span></div><div><b>'+q.errors.byStatus.mastered+'</b><span>maîtrisées</span></div><div><b>'+q.bestRun28+'</b><span>meilleur run / 28j</span></div></div></div>'+
+    '<div class="card"><div class="card-title">🔁 Erreurs & révisions</div><div class="ww-a-error-grid"><div><b>'+q.errors.total+'</b><span>erreurs enregistrées</span></div><div><b>'+q.errors.due+'</b><span>à revoir</span></div><div><b>'+q.errors.byStatus.mastered+'</b><span>maîtrisées</span></div><div><b>'+q.bestRun28+'</b><span>meilleur run / 28j</span></div></div></div>'+
   '</div>';
+}
+
+function renderAdaptiveRevisionCard(){
+  var a=wwAdaptiveSummary(),items=a.queue||[], qb=(window.WWAdaptiveQuiz&&window.WWAdaptiveQuiz.coverage)?window.WWAdaptiveQuiz.coverage(state.topics||[]):{covered:0,topics:0,questions:0,coveragePercent:0};
+  if(!items.length)return '<div class="card ww-adaptive-card"><div class="ww-adaptive-head"><div><div class="card-title">🧠 Révision adaptative</div><div class="ww-adaptive-sub">Aucune priorité forte détectée pour le moment.</div></div><span class="ww-adaptive-badge">63.5</span></div><button class="btn-outline" data-stats-tab="adaptive" style="width:100%;justify-content:center;margin-top:10px;">Voir le moteur</button></div>';
+  var top=items.slice(0,3),rows=top.map(function(x){var icon=x.type==='error'?'⚠️':'📖';var action=x.type==='error'?'<button class="btn-small btn-outline" data-review-error="'+x.errorId+'">Réviser</button>':'<button class="btn-small btn-outline" data-adaptive-open-topic="'+x.topicId+'">Ouvrir</button>';return '<div class="ww-adaptive-item"><div class="ww-adaptive-icon">'+icon+'</div><div class="ww-adaptive-copy"><b>'+x.title+'</b><small>'+x.duration+' min · '+x.reasons.slice(0,2).join(' · ')+'</small></div><strong>'+x.score+'</strong>'+action+'</div>'}).join('');
+  return '<div class="card ww-adaptive-card"><div class="ww-adaptive-head"><div><div class="card-title">🧠 Révision adaptative</div><div class="ww-adaptive-sub">Priorités calculées à partir des erreurs, Mastery, historique et examens.</div></div><span class="ww-adaptive-badge">LIVE 63.5</span></div><div class="ww-adaptive-kpis"><span><b>'+a.total+'</b> priorités</span><span><b>'+a.estimatedMinutes+'</b> min estimées</span><span><b>'+a.errors+'</b> erreurs</span><span><b>'+a.topics+'</b> chapitres</span></div><div class="ww-adaptive-list">'+rows+'</div><button class="btn-primary" data-stats-tab="adaptive" style="width:100%;justify-content:center;margin-top:10px;">🎯 Construire ma session</button></div>';
+}
+function wwStartAdaptiveRevision(){
+  var a=wwAdaptiveSummary(),items=a.queue||[];
+  if(!items.length){showToast('Aucune priorité à réviser');return;}
+  state.adaptiveRevision={items:JSON.parse(JSON.stringify(items)),currentIdx:0,startedAt:new Date().toISOString(),results:[],quiz:null};
+  state.statsTab='adaptive';
+  saveState();
+  render();
+}
+function wwAdaptiveCurrent(){var s=state.adaptiveRevision;if(!s||!s.items||s.currentIdx>=s.items.length)return null;return s.items[s.currentIdx]}
+function wwFinishAdaptiveRevision(){var s=state.adaptiveRevision||{},r=s.results||[],ok=r.filter(function(x){return x.success}).length,difficult=r.filter(function(x){return !x.success}).length,total=(s.items||[]).length;state.adaptiveRevision={items:s.items||[],currentIdx:total,startedAt:s.startedAt||null,results:r,completedAt:new Date().toISOString()};saveState();showToast('🎯 Session adaptative terminée');render()}
+function wwAdaptiveGetQuiz(item){
+  if(!item||item.type!=='topic'||!item.topicId||!window.WWAdaptiveQuiz)return null;
+  var s=state.adaptiveRevision||{};
+  if(s.quiz&&s.quiz.itemId===item.topicId)return s.quiz;
+  var topic=(state.topics||[]).find(function(t){return t.id===item.topicId});
+  var q=window.WWAdaptiveQuiz.get(topic||{title:item.title},state);
+  s.quiz={itemId:item.topicId,question:q,selected:null,revealed:false};
+  state.adaptiveRevision=s;saveState();
+  return s.quiz;
+}
+function wwAdaptiveAnswer(success){
+  var item=wwAdaptiveCurrent();if(!item)return;
+  if(item.type==='error'){
+    reviewError(item.errorId,success);
+  }else if(item.topicId&&window.WWMastery){
+    var qstate=state.adaptiveRevision.quiz, q=qstate&&qstate.question;
+    var actualCorrect=(q&&q.options&&qstate.selected!==null)?(qstate.selected===q.answer):null;
+    if(q&&q.id&&q.id.indexOf('fallback_')!==0){
+      if(!state.adaptiveQuestionStats)state.adaptiveQuestionStats={};
+      var byTopic=state.adaptiveQuestionStats[item.topicId]||(state.adaptiveQuestionStats[item.topicId]={});
+      var qs=byTopic[q.id]||(byTopic[q.id]={attempts:0,correct:0,wrong:0,lastAnswered:null});
+      qs.attempts=(qs.attempts||0)+1;
+      if(actualCorrect===true)qs.correct=(qs.correct||0)+1;
+      if(actualCorrect===false)qs.wrong=(qs.wrong||0)+1;
+      qs.lastAnswered=Date.now();
+    }
+    window.WWMastery.recordReview(state,item.topicId,success);
+    var pr=getProgress(item.topicId);pr.score=wwMasteryScore(item.topicId);state.progress[item.topicId]=pr;
+    if(success)state.xp+=3;
+  }
+  if(!state.adaptiveRevision.results)state.adaptiveRevision.results=[];
+  state.adaptiveRevision.results.push({id:item.type==='error'?item.errorId:item.topicId,type:item.type,success:!!success,actualCorrect:actualCorrect===null?null:!!actualCorrect,questionId:(state.adaptiveRevision.quiz&&state.adaptiveRevision.quiz.question&&state.adaptiveRevision.quiz.question.id)||null,at:new Date().toISOString()});
+  state.adaptiveRevision.currentIdx++;
+  state.adaptiveRevision.quiz=null;
+  saveState();render();
+}
+function wwAdaptiveQuizSelect(index){
+  var item=wwAdaptiveCurrent();if(!item)return;
+  var q=wwAdaptiveGetQuiz(item);if(!q||!q.question||!q.question.options)return;
+  q.selected=Number(index);state.adaptiveRevision.quiz=q;saveState();render();
+}
+function wwAdaptiveQuizReveal(){
+  var item=wwAdaptiveCurrent();if(!item)return;
+  var q=wwAdaptiveGetQuiz(item);if(!q)return;
+  if(q.question.options&&q.selected===null){showToast('Choisis une réponse avant de corriger');return;}
+  q.revealed=true;state.adaptiveRevision.quiz=q;saveState();render();
+}
+function renderAdaptiveRevisionSession(){
+  var s=state.adaptiveRevision,item=wwAdaptiveCurrent();
+  if(!s)return '';
+  var total=(s.items||[]).length,done=Math.min(s.currentIdx,total),r=s.results||[],ok=r.filter(function(x){return x.success}).length,diff=r.filter(function(x){return !x.success}).length;
+  if(!item){return '<div class="ww-adaptive-session"><div class="card ww-adaptive-card"><div class="ww-adaptive-session-done">🎉</div><h3 style="text-align:center;">Session adaptative terminée</h3><p class="text-muted" style="text-align:center;">'+total+' priorité'+(total>1?'s':'')+' traitée'+(total>1?'s':'')+' · '+ok+' réussie'+(ok>1?'s':'')+' · '+diff+' à renforcer.</p><div class="ww-adaptive-kpis"><span><b>'+total+'</b> traitées</span><span><b>'+ok+'</b> OK</span><span><b>'+diff+'</b> difficiles</span><span><b>'+((new Date(s.completedAt||Date.now())-new Date(s.startedAt||Date.now()))/60000|0)+'</b> min</span></div><button class="btn-primary" data-adaptive-session-close style="width:100%;justify-content:center;margin-top:12px;">↩️ Retour au moteur</button></div><div class="card"><div class="card-title">🔄 Moteur recalculé</div><p class="text-muted text-small">Les priorités ont été réévaluées après tes réponses. Le Planning n’a pas été modifié.</p><button class="btn-outline" data-stats-tab="adaptive" style="width:100%;justify-content:center;">Voir les nouvelles priorités</button></div></div>'}
+  var topic=item.topicId?((state.topics||[]).find(function(t){return t.id===item.topicId})||{}):{};
+  var subject=item.subjectId?((state.subjects||[]).find(function(x){return x.id===item.subjectId})||{}):{};
+  var title=wwEscapeHTML(item.title),meta=wwEscapeHTML(subject.name||'')+(topic.title?' · '+wwEscapeHTML(topic.title):'');
+  var correction='';
+  if(item.type==='error'){
+    var err=(state.errors||[]).find(function(e){return e.id===item.errorId});
+    correction=err&&err.correction?'<div class="rs-correction">💡 Correction mémorisée : '+wwEscapeHTML(err.correction)+'</div>':'';
+    return '<div class="ww-adaptive-session"><div class="card ww-adaptive-card"><div class="rs-progress"><span>Session adaptative '+(done+1)+'/'+total+'</span><span>'+ok+' OK · '+diff+' difficiles</span></div><div class="ww-adaptive-progress"><i style="width:'+Math.round(done/total*100)+'%"></i></div><div class="ww-adaptive-type">⚠️ ERREUR À MAÎTRISER</div><div class="ww-adaptive-session-title">'+title+'</div><div class="ww-adaptive-session-meta">'+meta+' · Score '+item.score+'</div><div class="ww-adaptive-reasons">'+(item.reasons||[]).map(function(x){return '<span>'+wwEscapeHTML(x)+'</span>'}).join('')+'</div><div class="ww-adaptive-question">Après relecture, peux-tu expliquer et corriger cette erreur sans aide ?</div><div class="ww-adaptive-answer"><button class="rs-btn-no" data-adaptive-answer="no">❌ Non, encore difficile</button><button class="rs-btn-yes" data-adaptive-answer="yes">✅ Oui, je maîtrise</button></div>'+correction+'<button class="btn-outline btn-small" data-adaptive-session-stop style="width:100%;justify-content:center;margin-top:10px;">Arrêter la session</button></div></div>';
+  }
+  var qstate=wwAdaptiveGetQuiz(item),q=qstate&&qstate.question;
+  var adaptiveLevel=(window.WWAdaptiveQuiz&&window.WWAdaptiveQuiz.targetDifficulty&&item.topicId)?window.WWAdaptiveQuiz.targetDifficulty((state.topics||[]).find(function(t){return t.id===item.topicId})||{id:item.topicId},state):null;
+  var quiz='';
+  if(q&&q.options){
+    var opts=q.options.map(function(o,i){var cls='ww-quiz-option';if(qstate.selected===i)cls+=' selected';if(qstate.revealed&&i===q.answer)cls+=' correct';if(qstate.revealed&&qstate.selected===i&&i!==q.answer)cls+=' wrong';return '<button class="'+cls+'" data-adaptive-quiz-option="'+i+'" '+(qstate.revealed?'disabled':'')+'>'+String.fromCharCode(65+i)+'. '+wwEscapeHTML(o)+'</button>'}).join('');
+    quiz='<div class="ww-adaptive-quiz"><div class="ww-quiz-label">🧪 MINI-TEST</div><div class="ww-quiz-question">'+wwEscapeHTML(q.q)+'</div><div class="ww-quiz-options">'+opts+'</div>'+(qstate.revealed?'<div class="ww-quiz-feedback '+(qstate.selected===q.answer?'good':'bad')+'">'+(qstate.selected===q.answer?'✅ Bonne réponse. ':'❌ Réponse incorrecte. ')+'<span>'+wwEscapeHTML(q.why||'')+'</span></div><div class="ww-adaptive-question">Résultat du test : '+(qstate.selected===q.answer?'maîtrisé':'à renforcer')+'.</div><div class="ww-adaptive-answer"><button class="rs-btn-no" data-adaptive-answer="no">❌ Je dois renforcer</button><button class="rs-btn-yes" data-adaptive-answer="yes">✅ Je maîtrise</button></div>':'<button class="btn-primary" data-adaptive-quiz-reveal style="width:100%;justify-content:center;margin-top:10px;" '+(qstate.selected===null?'disabled':'')+'>Corriger le mini-test</button>')+'</div>';
+  }else{
+    quiz='<div class="ww-adaptive-quiz"><div class="ww-quiz-label">🧠 RAPPEL ACTIF</div><div class="ww-quiz-question">'+wwEscapeHTML(q?q.q:'Explique ce chapitre sans regarder ton cours.')+'</div><div class="ww-quiz-feedback good" style="display:block">Formule ta réponse mentalement ou à l’oral, puis évalue honnêtement ton niveau.</div><div class="ww-adaptive-answer"><button class="rs-btn-no" data-adaptive-answer="no">❌ Je ne savais pas</button><button class="rs-btn-yes" data-adaptive-answer="yes">✅ Je savais l’expliquer</button></div></div>';
+  }
+  return '<div class="ww-adaptive-session"><div class="card ww-adaptive-card"><div class="rs-progress"><span>Session adaptative '+(done+1)+'/'+total+'</span><span>'+ok+' OK · '+diff+' difficiles</span></div><div class="ww-adaptive-progress"><i style="width:'+Math.round(done/total*100)+'%"></i></div><div class="ww-adaptive-type">📖 CHAPITRE À CONSOLIDER</div><div class="ww-adaptive-session-title">'+title+'</div><div class="ww-adaptive-session-meta">'+meta+' · Score '+item.score+' · '+item.duration+' min estimées</div><div class="ww-adaptive-reasons">'+(item.reasons||[]).map(function(x){return '<span>'+wwEscapeHTML(x)+'</span>'}).join('')+'</div>'+quiz+'<button class="btn-outline btn-small" data-adaptive-session-stop style="width:100%;justify-content:center;margin-top:10px;">Arrêter la session</button></div></div>';
+}
+
+function renderAdaptiveRevisionScreen(){
+  if(state.adaptiveRevision)return renderAdaptiveRevisionSession();
+  var a=wwAdaptiveSummary(),items=a.queue||[];
+  if(!items.length)return '<div class="card ww-adaptive-screen"><div style="font-size:34px;text-align:center;margin-bottom:8px;">🧘</div><h3 style="text-align:center;">Aucune priorité forte</h3><p class="text-muted" style="text-align:center;">Continue à enregistrer tes sessions et tes erreurs : le moteur se recalculera automatiquement.</p></div>';
+  var list=items.map(function(x,i){var sub=state.subjects.find(function(s){return s.id===x.subjectId});var icon=x.type==='error'?'⚠️':'📖';var action=x.type==='error'?'<button class="btn-primary btn-small" data-review-error="'+x.errorId+'">🔄 Réviser</button>':'<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn-primary btn-small" data-adaptive-open-topic="'+x.topicId+'">📖 Ouvrir</button><button class="btn-outline btn-small" data-question-bank="'+x.topicId+'">🧪 Questions</button></div>';return '<div class="ww-adaptive-row"><div class="ww-adaptive-rank">'+(i+1)+'</div><div class="ww-adaptive-icon">'+icon+'</div><div class="ww-adaptive-copy"><b>'+wwEscapeHTML(x.title)+'</b><small>'+(sub?wwEscapeHTML(sub.name)+' · ':'')+x.duration+' min · Score '+x.score+'</small><span>'+x.reasons.map(wwEscapeHTML).join(' · ')+'</span></div>'+action+'</div>'}).join('');
+  return '<div class="ww-adaptive-screen"><div class="card ww-adaptive-card"><div class="ww-adaptive-head"><div><div class="card-title">🧠 Adaptive Revision Engine</div><div class="ww-adaptive-sub">Plan de révision explicable · le Planning reste inchangé.</div></div><span class="ww-adaptive-badge">63.5</span></div><div class="ww-adaptive-kpis"><span><b>'+a.total+'</b> priorités</span><span><b>'+a.estimatedMinutes+'</b> min estimées</span><span><b>'+a.errors+'</b> erreurs</span><span><b>'+a.topics+'</b> chapitres</span></div><button class="btn-primary" data-start-adaptive-session style="width:100%;justify-content:center;margin-top:12px;">▶️ Démarrer la session adaptative</button></div><div class="card"><div class="card-title">🎯 Ordre de révision proposé</div><div class="ww-adaptive-rows">'+list+'</div></div><div class="card"><div class="card-title">🧪 Banque de questions</div><p class="text-muted text-small">'+qb.covered+'/'+qb.topics+' chapitres couverts · '+qb.questions+' questions locales · couverture '+qb.coveragePercent+'%</p><div class="ww-adaptive-method"><span>🎯 Questions liées aux Topics</span><span>📊 Performance par question</span><span>🔁 Les moins révisées remontent en priorité</span></div></div><div class="card"><div class="card-title">⚙️ Comment le moteur décide</div><div class="ww-adaptive-method"><span>⚠️ Erreurs non maîtrisées</span><span>🧠 Niveau de Mastery</span><span>⏳ Temps depuis la dernière étude</span><span>🎯 Proximité des examens</span><span>📚 Sessions enregistrées</span></div></div></div>';
 }
 
 function renderStats(){
@@ -1253,10 +1351,12 @@ function renderStats(){
     '<div class="inner-tab '+(tab==='advanced'?'active':'')+'" data-stats-tab="advanced">📊 Analyses</div>'+
     '<div class="inner-tab '+(tab==='errors'?'active':'')+'" data-stats-tab="errors">⚠️ Erreurs'+(errDue>0?' <span class="tab-count">'+errDue+'</span>':'')+'</div>'+
     '<div class="inner-tab '+(tab==='analytics'?'active':'')+'" data-stats-tab="analytics">🧬 Analytics</div>'+
+    '<div class="inner-tab '+(tab==='adaptive'?'active':'')+'" data-stats-tab="adaptive">🧠 Révision</div>'+
   '</div>';
   var content='';
   if(tab==='errors')content=renderErrorsScreen();
   else if(tab==='analytics')content=renderPersonalAnalytics();
+  else if(tab==='adaptive')content=renderAdaptiveRevisionScreen();
   else if(tab==='advanced')content=renderAdvancedStats();
   else content=renderStatsOverview();
   return '<div><h2 style="font-size:22px;margin-bottom:16px;">📈 Statistiques</h2>'+tabsHTML+content+'</div>';
@@ -1309,7 +1409,7 @@ function renderErrorsScreen(){
   var listHTML='';
   if(state.errors.length===0){listHTML='<div class="err-empty"><div class="empty-icon">🎯</div><div class="empty-text">Aucune erreur enregistrée</div></div>'}
   else if(filtered.length===0){listHTML='<div class="err-empty"><div class="empty-icon">🔍</div><div class="empty-text">Aucune erreur dans ce filtre</div></div>'}
-  else{listHTML=filtered.map(function(err){var statusLabel=err.status==='to_review'?'🔴 À revoir':(err.status==='in_progress'?'🟡 En cours':'🟢 Maîtrisé');var revDots='';for(var i=0;i<err.max_revisions;i++){revDots+='<div class="rev-dot '+(i<err.revisions?'filled':'')+'"></div>'}var meta='<span>📚 '+getErrorSubjectName(err)+'</span><span>💬 '+getCauseLabel(err.cause)+'</span><span>📅 '+new Date(err.created_at).toLocaleDateString('fr-FR')+'</span>';return '<div class="error-card status-'+err.status+'"><div class="ec-header"><div class="ec-title">'+err.description+'</div><div class="ec-badge">'+statusLabel+'</div></div><div class="ec-meta">'+meta+'</div>'+(err.correction?'<div class="ec-detail">✅ '+err.correction+'</div>':'')+'<div class="ec-revisions"><span>Révisions :</span><div class="rev-dots">'+revDots+'</div><span>'+err.revisions+'/'+err.max_revisions+'</span></div><div class="ec-actions"><button class="btn-small btn-outline" data-review-error="'+err.id+'">🔄 Réviser</button><button class="btn-small btn-outline" data-delete-error="'+err.id+'">🗑️ Supprimer</button></div></div>'}).join('')}
+  else{listHTML=filtered.map(function(err){var statusLabel=err.status==='to_review'?'🔴 À revoir':(err.status==='in_progress'?'🟡 En cours':'🟢 Maîtrisé');var revDots='';for(var i=0;i<err.max_revisions;i++){revDots+='<div class="rev-dot '+(i<err.revisions?'filled':'')+'"></div>'}var topicMeta=err.topic_id?((state.topics||[]).find(function(t){return t.id===err.topic_id})||{}).title:'';var meta='<span>📚 '+getErrorSubjectName(err)+'</span>'+(topicMeta?'<span>📖 '+topicMeta+'</span>':'')+'<span>💬 '+getCauseLabel(err.cause)+'</span><span>📅 '+new Date(err.created_at).toLocaleDateString('fr-FR')+'</span>';return '<div class="error-card status-'+err.status+'"><div class="ec-header"><div class="ec-title">'+err.description+'</div><div class="ec-badge">'+statusLabel+'</div></div><div class="ec-meta">'+meta+'</div>'+(err.correction?'<div class="ec-detail">✅ '+err.correction+'</div>':'')+'<div class="ec-revisions"><span>Révisions :</span><div class="rev-dots">'+revDots+'</div><span>'+err.revisions+'/'+err.max_revisions+'</span></div><div class="ec-actions"><button class="btn-small btn-outline" data-review-error="'+err.id+'">🔄 Réviser</button><button class="btn-small btn-outline" data-delete-error="'+err.id+'">🗑️ Supprimer</button></div></div>'}).join('')}
   return '<div>'+statsHTML+'<button class="btn-primary" data-add-error style="width:100%;justify-content:center;margin-bottom:14px;">➕ Ajouter une erreur</button>'+startBtn+filtHTML+listHTML+'</div>';
 }
 
@@ -1319,7 +1419,7 @@ function renderReviewSession(){
     var reviewed=session?session.errors.length:0;state.reviewSession=null;
     return '<div class="review-session" style="text-align:center;"><div style="font-size:48px;margin-bottom:12px;">🎉</div><div style="font-size:18px;font-weight:700;color:#6ae8a5;margin-bottom:8px;">Session terminée !</div><div style="font-size:13px;color:#c8d6e5;margin-bottom:16px;">Tu as révisé '+reviewed+' erreur'+(reviewed>1?'s':'')+'.</div><button class="btn-primary" data-end-review style="width:100%;justify-content:center;">Retour</button></div>';
   }
-  var err=session.errors[session.currentIdx];var meta=getErrorSubjectName(err)+' · '+getCauseLabel(err.cause);
+  var err=session.errors[session.currentIdx];var topicMeta=err.topic_id?((state.topics||[]).find(function(t){return t.id===err.topic_id})||{}).title:'';var meta=getErrorSubjectName(err)+(topicMeta?' · '+topicMeta:'')+' · '+getCauseLabel(err.cause);
   return '<div class="review-session"><div class="rs-progress"><span>Révision '+(session.currentIdx+1)+'/'+session.errors.length+'</span><span>Révisions: '+err.revisions+'/'+err.max_revisions+'</span></div><div class="rs-question">'+err.description+'</div><div style="font-size:12px;color:#8ba2c0;text-align:center;margin-bottom:12px;">'+meta+'</div>'+(err.correction?'<div class="rs-correction">✅ '+err.correction+'</div>':'')+'<div style="font-size:13px;color:#c8d6e5;text-align:center;margin-bottom:14px;">Maîtrises-tu ?</div><div class="rs-actions"><button class="rs-btn-no" data-review-result="no">❌ Non</button><button class="rs-btn-yes" data-review-result="yes">✅ Oui</button></div><button class="btn-outline btn-small" data-end-review style="width:100%;justify-content:center;margin-top:10px;">Arrêter</button></div>';
 }
 
@@ -1388,6 +1488,24 @@ function renderResources(){
   return '<div>'+header+search+actions+filters+'<div class="card" style="padding:14px;">'+content+'</div></div>'+(window.WWV46LibraryHTML?window.WWV46LibraryHTML():'');
 }
 
+
+function wwQuizDifficultyLabel(d){return d==='Easy'?'🟢 Facile':(d==='Hard'?'🔴 Difficile':'🟠 Moyen')}
+function wwOpenQuestionBank(topicId){state.modal={type:'questionBank',topicId:topicId};render()}
+function wwSaveCustomQuestion(){
+  var tid=document.getElementById('qb-topic').value,q=document.getElementById('qb-question').value.trim();
+  var o=[1,2,3,4].map(function(i){return document.getElementById('qb-o'+i).value.trim()});
+  var ans=parseInt(document.getElementById('qb-answer').value,10),diff=document.getElementById('qb-difficulty').value,why=document.getElementById('qb-why').value.trim();
+  if(!tid||!q||o.some(function(x){return !x})||![0,1,2,3].includes(ans)){alert('Complète la question, les 4 réponses et la bonne réponse.');return}
+  if(!state.adaptiveCustomQuestions)state.adaptiveCustomQuestions={};
+  if(!state.adaptiveCustomQuestions[tid])state.adaptiveCustomQuestions[tid]=[];
+  state.adaptiveCustomQuestions[tid].push({id:'custom_'+generateId(),q:q,options:o,answer:ans,why:why||'Question personnalisée ajoutée par l’étudiant.',difficulty:diff,createdAt:new Date().toISOString(),custom:true});
+  state.modal={type:'questionBank',topicId:tid};saveState();showToast('🧪 Question ajoutée');render();
+}
+function wwDeleteCustomQuestion(topicId,qid){
+  if(!confirm('Supprimer cette question personnalisée ?'))return;
+  var a=state.adaptiveCustomQuestions&&state.adaptiveCustomQuestions[topicId]||[];state.adaptiveCustomQuestions[topicId]=a.filter(function(q){return q.id!==qid});saveState();render();
+}
+
 function renderModal(){
   var m=state.modal;if(!m)return '';
   if(m.type==='notifications'){var notifs=state.notifications||[];var unread=notifs.filter(function(n){return !state.readNotifications[n.id]});var listHTML='';if(notifs.length===0){listHTML='<div class="notif-empty"><div class="ne-icon">🔕</div><div class="ne-text">Aucune notification</div></div>'}else{listHTML='<div class="notif-list">'+notifs.map(function(n){var isRead=state.readNotifications[n.id];return '<div class="notif-item '+n.type+'" style="'+(isRead?'opacity:.5':'')+'"><div class="ni-icon">'+n.icon+'</div><div class="ni-content"><div class="ni-title">'+n.title+'</div><div class="ni-meta">'+n.text+'</div></div></div>'}).join('')+'</div>'}var clearBtn=unread.length>0?'<button class="btn-outline btn-small" data-mark-all-read style="margin-bottom:12px;">✅ Tout marquer comme lu</button>':'';return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📬 Notifications</h3>'+clearBtn+listHTML+'<div class="modal-actions"><button class="btn-primary" data-close-modal>Fermer</button></div></div></div>'}
@@ -1401,7 +1519,14 @@ function renderModal(){
   if(m.type==='resourceTime'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>⏱️ Enregistrer le temps</h3><div style="display:grid;gap:12px;"><label>Minutes étudiées</label><input id="resource-time-min" type="number" min="1" max="1440" value="30" autofocus></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-resource-time data-sid="'+m.subjectId+'" data-rid="'+m.resourceId+'">✅ Enregistrer</button></div></div></div>'}
   if(m.type==='session'){var today3=wwLocalDateISO(new Date());var tid=m.topicId;return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📚 Session</h3><div style="display:grid;gap:12px;"><div><label>📅 Date</label><input type="date" id="session-date" value="'+today3+'"></div><div><label>⏱️ Durée (min)</label><input type="number" id="session-duration" value="30" min="5" max="240"></div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-session="'+tid+'">Enregistrer</button></div></div></div>'}
   if(m.type==='progDetail'){var t=PROGRAMMING_TOPICS.find(function(x){return x.id===m.topicId});if(!t)return '';return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>'+t.icon+' '+t.title+'</h3><div class="what-learn"><h4>💡 ما ستتعلمه:</h4><ul>'+t.learn.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div><div class="modal-actions"><button class="btn-primary" data-close-modal>Fermer</button></div></div></div>'}
-  if(m.type==='addError'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>➕ Erreur</h3><div style="display:grid;gap:12px;"><input id="err-desc" placeholder="Description" autofocus><select id="err-subject"><option value="">Aucune</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><select id="err-topic"><option value="">Chapitre (optionnel)</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'">'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('')+'</select><select id="err-cause"><option value="forgot_formula">نسيت الصيغة</option><option value="confusion">خلط</option><option value="calculation">حساب</option><option value="reading">قراءة</option><option value="methodology">منهجية</option><option value="other">أخرى</option></select><textarea id="err-correction" rows="2" placeholder="الصواب"></textarea></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-error>✅ Enregistrer</button></div></div></div>'}
+  if(m.type==='addError'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>➕ Erreur</h3><div style="display:grid;gap:12px;"><input id="err-desc" placeholder="Description" autofocus><select id="err-subject"><option value="">Aucune</option>'+state.subjects.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>'}).join('')+'</select><select id="err-topic"><option value="">Chapitre / Topic (optionnel)</option>'+state.topics.map(function(t){var ss=state.subjects.find(function(s){return s.id===t.subject_id});return '<option value="'+t.id+'">'+(ss?ss.name+' · ':'')+t.title+'</option>'}).join('')+'</select><select id="err-cause"><option value="forgot_formula">نسيت الصيغة</option><option value="confusion">خلط</option><option value="calculation">حساب</option><option value="reading">قراءة</option><option value="methodology">منهجية</option><option value="other">أخرى</option></select><textarea id="err-correction" rows="2" placeholder="الصواب"></textarea></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-error>✅ Enregistrer</button></div></div></div>'}
+  if(m.type==='questionBank'){
+    var qt=state.topics.find(function(t){return t.id===m.topicId}); if(!qt)return '';
+    var qs=window.WWAdaptiveQuiz?window.WWAdaptiveQuiz.list(m.topicId,state):[];
+    var custom=qs.filter(function(q){return q.custom});
+    var qlist=custom.length?custom.map(function(q){return '<div class="qb-custom-row"><div><b>'+wwEscapeHTML(q.q)+'</b><small>'+wwQuizDifficultyLabel(q.difficulty)+' · bonne réponse: '+String.fromCharCode(65+q.answer)+'</small></div><button class="btn-small btn-outline" data-delete-question="'+q.id+'" data-delete-question-topic="'+m.topicId+'">🗑️</button></div>'}).join(''):'<p class="text-muted text-small">Aucune question personnalisée pour ce Topic.</p>';
+    return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>🧪 Banque — '+wwEscapeHTML(qt.title)+'</h3><p class="text-muted text-small">Ajoute tes propres questions à partir de ton cours. Elles restent locales dans ton application.</p><div style="display:grid;gap:10px;"><textarea id="qb-question" rows="3" placeholder="Question"></textarea><input id="qb-o1" placeholder="A. Réponse"><input id="qb-o2" placeholder="B. Réponse"><input id="qb-o3" placeholder="C. Réponse"><input id="qb-o4" placeholder="D. Réponse"><select id="qb-answer"><option value="0">Bonne réponse : A</option><option value="1">Bonne réponse : B</option><option value="2">Bonne réponse : C</option><option value="3">Bonne réponse : D</option></select><select id="qb-difficulty"><option value="Easy">Facile</option><option value="Medium" selected>Moyen</option><option value="Hard">Difficile</option></select><textarea id="qb-why" rows="2" placeholder="Explication / correction"></textarea></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Fermer</button><button class="btn-primary" data-save-question>➕ Ajouter</button></div><div style="margin-top:16px"><h4>Questions personnalisées ('+custom.length+')</h4>'+qlist+'</div></div></div>';
+  }
   if(m.type==='addFcManual'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>➕ Flashcard</h3><div style="display:grid;gap:12px;"><input id="fc-q" placeholder="Question" autofocus><input id="fc-a" placeholder="Réponse"></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-fc>✅ Ajouter</button></div></div></div>'}
   return '';
 }
@@ -1460,11 +1585,20 @@ function attachAppEvents(){
   document.querySelectorAll('[data-emploi-mode]').forEach(function(el){el.onclick=function(){var mode=this.dataset.emploiMode;try{localStorage.setItem('wwEmploiMode',mode)}catch(e){}render()}});
   document.querySelectorAll('[data-emploi-course]').forEach(function(el){el.onclick=function(){state.modal={type:'emploiCourse',data:this.dataset.emploiCourse};render()}});
   document.querySelectorAll('[data-group-toggle]').forEach(function(el){el.onclick=function(){var b=document.getElementById('body-'+this.dataset.groupToggle);if(b)b.classList.toggle('open')}});
-  document.querySelectorAll('[data-stats-tab]').forEach(function(el){el.onclick=function(){state.statsTab=this.dataset.statsTab;state.reviewSession=null;render()}});
+  document.querySelectorAll('[data-stats-tab]').forEach(function(el){el.onclick=function(){state.statsTab=this.dataset.statsTab;if(this.dataset.statsTab!=='adaptive')state.adaptiveRevision=null;state.reviewSession=null;render()}});
+  document.querySelectorAll('[data-start-adaptive-session]').forEach(function(el){el.onclick=function(){wwStartAdaptiveRevision()}});
+  document.querySelectorAll('[data-adaptive-answer]').forEach(function(el){el.onclick=function(){wwAdaptiveAnswer(this.dataset.adaptiveAnswer==='yes')}});
+  document.querySelectorAll('[data-adaptive-quiz-option]').forEach(function(el){el.onclick=function(e){e.stopPropagation();wwAdaptiveQuizSelect(this.dataset.adaptiveQuizOption)}});
+  document.querySelectorAll('[data-adaptive-quiz-reveal]').forEach(function(el){el.onclick=function(e){e.stopPropagation();wwAdaptiveQuizReveal()}});
+  document.querySelectorAll('[data-adaptive-session-stop]').forEach(function(el){el.onclick=function(){if(confirm('Arrêter la session adaptative ? La progression déjà enregistrée sera conservée.')){state.adaptiveRevision=null;saveState();render()}}});
+  document.querySelectorAll('[data-adaptive-session-close]').forEach(function(el){el.onclick=function(){state.adaptiveRevision=null;saveState();render()}});
   document.querySelectorAll('[data-intel-stats]').forEach(function(el){el.onclick=function(e){e.stopPropagation();state.statsTab=this.dataset.intelStats||'overview';state.reviewSession=null;state.route='stats';render()}});
   document.querySelectorAll('[data-err-filter]').forEach(function(el){el.onclick=function(){state.errFilter=this.dataset.errFilter;render()}});
   document.querySelectorAll('[data-add-error]').forEach(function(el){el.onclick=function(){state.modal={type:'addError'};render()}});
-  document.querySelectorAll('[data-save-error]').forEach(function(el){el.onclick=function(){var desc=document.getElementById('err-desc').value;var subject=document.getElementById('err-subject').value;var topic=(document.getElementById('err-topic')||{}).value||'';var cause=document.getElementById('err-cause').value;var correction=document.getElementById('err-correction').value;if(!desc){alert('Description requise');return}addError(desc,subject,cause,correction,'medium',topic||null);state.modal=null;showToast('✅ Ajoutée');render()}});
+  document.querySelectorAll('[data-question-bank]').forEach(function(el){el.onclick=function(e){e.stopPropagation();wwOpenQuestionBank(this.dataset.questionBank)}});
+  document.querySelectorAll('[data-save-question]').forEach(function(el){el.onclick=function(){wwSaveCustomQuestion()}});
+  document.querySelectorAll('[data-delete-question]').forEach(function(el){el.onclick=function(){wwDeleteCustomQuestion(this.dataset.deleteQuestionTopic,this.dataset.deleteQuestion)}});
+  document.querySelectorAll('[data-save-error]').forEach(function(el){el.onclick=function(){var desc=document.getElementById('err-desc').value;var subject=document.getElementById('err-subject').value;var cause=document.getElementById('err-cause').value;var correction=document.getElementById('err-correction').value;if(!desc){alert('Description requise');return}addError(desc,subject,document.getElementById('err-topic').value,cause,correction,'medium');state.modal=null;showToast('✅ Ajoutée');render()}});
   document.querySelectorAll('[data-delete-error]').forEach(function(el){el.onclick=function(e){e.stopPropagation();if(confirm('Supprimer ?')){state.errors=state.errors.filter(function(x){return x.id!==el.dataset.deleteError});saveState();render()}}});
   document.querySelectorAll('[data-review-error]').forEach(function(el){el.onclick=function(e){e.stopPropagation();state.modal={type:'reviewError',errorId:this.dataset.reviewError};render()}});
   document.querySelectorAll('[data-review-result]').forEach(function(el){el.onclick=function(){var success=(this.dataset.reviewResult==='yes');if(state.reviewSession){var currentErr=state.reviewSession.errors[state.reviewSession.currentIdx];reviewError(currentErr.id,success);state.reviewSession.currentIdx++;if(success)state.xp+=5;saveState();render()}}});
@@ -1483,7 +1617,7 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=function(){
     var input=document.getElementById('resource-file');
     if(!input){showToast('Sélecteur de fichier indisponible');return;}
-    // V63.0 Android/PWA fix: open the native <input type=file> directly from
+    // V63.2 Android/PWA fix: open the native <input type=file> directly from
     // the user gesture. Waiting for showOpenFilePicker() and then calling
     // input.click() loses Android's user-activation token, so the fallback
     // picker may silently do nothing. The native picker is the most reliable
@@ -1501,13 +1635,13 @@ function attachAppEvents(){
 var saveStateQueue=Promise.resolve();
 async function saveState(){
   if(window.WWEventBus)WWEventBus.emit('state:save:start',{route:state.route});
-  var snapshot={subjects:state.subjects,topics:state.topics,progress:state.progress,mastery:state.mastery,sessions:state.sessions,errors:state.errors,programming:state.programming,languages:state.languages,langDone:state.langDone,flashcards:state.flashcards,fcReview:state.fcReview,tasks:state.tasks,exams:state.exams,resources:state.resources,ignoredTopics:state.ignoredTopics,settings:state.settings,onboardingDone:state.onboardingDone,onboardingData:state.onboardingData,customSchedule:state.customSchedule,xp:state.xp,studyStreak:state.studyStreak,lastStudyDate:state.lastStudyDate,readNotifications:state.readNotifications,notifications:state.notifications,lastNotifCheck:state.lastNotifCheck,_lastSentNotifs:state._lastSentNotifs,quranTab:state.quranTab,quranSurahs:state.quranSurahs,quranJuz:state.quranJuz,quranKhatmas:state.quranKhatmas,quranCurrentKhatmaId:state.quranCurrentKhatmaId};
+  var snapshot={subjects:state.subjects,topics:state.topics,progress:state.progress,mastery:state.mastery,sessions:state.sessions,errors:state.errors,programming:state.programming,languages:state.languages,langDone:state.langDone,flashcards:state.flashcards,fcReview:state.fcReview,tasks:state.tasks,exams:state.exams,resources:state.resources,ignoredTopics:state.ignoredTopics,settings:state.settings,onboardingDone:state.onboardingDone,onboardingData:state.onboardingData,customSchedule:state.customSchedule,xp:state.xp,studyStreak:state.studyStreak,lastStudyDate:state.lastStudyDate,readNotifications:state.readNotifications,notifications:state.notifications,lastNotifCheck:state.lastNotifCheck,_lastSentNotifs:state._lastSentNotifs,quranTab:state.quranTab,quranSurahs:state.quranSurahs,quranJuz:state.quranJuz,quranKhatmas:state.quranKhatmas,quranCurrentKhatmaId:state.quranCurrentKhatmaId,adaptiveRevision:state.adaptiveRevision,adaptiveQuestionStats:state.adaptiveQuestionStats,adaptiveCustomQuestions:state.adaptiveCustomQuestions};
   saveStateQueue=saveStateQueue.then(function(){return dbSet('appState',snapshot)}).catch(function(e){console.warn('saveState error',e)});
   var queued=saveStateQueue.then(function(){if(window.WWEventBus)WWEventBus.emit('state:save:complete',{route:state.route})});
   return queued;
 }
 
-async function loadState(){try{var data=await dbGet('appState');if(data){state.subjects=data.subjects||MASTER_SUBJECTS;state.topics=data.topics||TOPICS_SEED;state.progress=data.progress||{};state.mastery=data.mastery||{};state.sessions=data.sessions||[];state.errors=data.errors||[];state.programming=data.programming||{};state.languages=data.languages||JSON.parse(JSON.stringify(LANGUAGES));state.langDone=data.langDone||{};state.flashcards=data.flashcards||{};var latestEn=LANGUAGES.find(function(x){return x.id==='en'});var existingEn=state.languages.find(function(x){return x.id==='en'});if(latestEn){if(existingEn){var ei=state.languages.indexOf(existingEn);state.languages[ei]=JSON.parse(JSON.stringify(latestEn))}else{state.languages.push(JSON.parse(JSON.stringify(latestEn)))}}if(state.flashcards&&state.flashcards.en){state.flashcards.en=state.flashcards.en.filter(function(c){return !c.auto||!!(state.languages.find(function(x){return x.id==='en'}).levels[c.level])})}state.fcReview=data.fcReview||{};state.tasks=data.tasks||[];state.exams=data.exams||[];state.resources=data.resources||{};state.ignoredTopics=data.ignoredTopics||{};state.settings=data.settings||{showSmartRevision:true,notifications:true};if(state.settings.notifications===undefined)state.settings.notifications=true;state.onboardingDone=data.onboardingDone||false;state.onboardingData=data.onboardingData||{name:'',goal:'',studyTime:'',notif:true};state.customSchedule=data.customSchedule||{};state.xp=data.xp||0;state.studyStreak=data.studyStreak||0;state.lastStudyDate=data.lastStudyDate||null;state.readNotifications=data.readNotifications||{};state.notifications=data.notifications||state.notifications||[];state.lastNotifCheck=data.lastNotifCheck||state.lastNotifCheck||null;state._lastSentNotifs=data._lastSentNotifs||state._lastSentNotifs||{};state.quranTab=data.quranTab||'surahs';state.quranSurahs=Array.isArray(data.quranSurahs)?data.quranSurahs:wwQuranDefaultSurahs();state.quranJuz=Array.isArray(data.quranJuz)?data.quranJuz:wwQuranDefaultJuz();state.quranKhatmas=Array.isArray(data.quranKhatmas)?data.quranKhatmas:[];state.quranCurrentKhatmaId=data.quranCurrentKhatmaId||null;wwQuranEnsureData()}if(window.WWMastery)window.WWMastery.syncState(state);if(!state.notifications)state.notifications=[];if(!state.readNotifications)state.readNotifications={};if(!state._lastSentNotifs)state._lastSentNotifs={}}catch(e){console.warn('Load error',e);state.subjects=MASTER_SUBJECTS;state.topics=TOPICS_SEED;state.languages=JSON.parse(JSON.stringify(LANGUAGES));state.notifications=[];state.readNotifications={}}}
+async function loadState(){try{var data=await dbGet('appState');if(data){state.subjects=data.subjects||MASTER_SUBJECTS;state.topics=data.topics||TOPICS_SEED;state.progress=data.progress||{};state.mastery=data.mastery||{};state.sessions=data.sessions||[];state.errors=data.errors||[];state.programming=data.programming||{};state.languages=data.languages||JSON.parse(JSON.stringify(LANGUAGES));state.langDone=data.langDone||{};state.flashcards=data.flashcards||{};var latestEn=LANGUAGES.find(function(x){return x.id==='en'});var existingEn=state.languages.find(function(x){return x.id==='en'});if(latestEn){if(existingEn){var ei=state.languages.indexOf(existingEn);state.languages[ei]=JSON.parse(JSON.stringify(latestEn))}else{state.languages.push(JSON.parse(JSON.stringify(latestEn)))}}if(state.flashcards&&state.flashcards.en){state.flashcards.en=state.flashcards.en.filter(function(c){return !c.auto||!!(state.languages.find(function(x){return x.id==='en'}).levels[c.level])})}state.fcReview=data.fcReview||{};state.tasks=data.tasks||[];state.exams=data.exams||[];state.resources=data.resources||{};state.ignoredTopics=data.ignoredTopics||{};state.settings=data.settings||{showSmartRevision:true,notifications:true};if(state.settings.notifications===undefined)state.settings.notifications=true;state.onboardingDone=data.onboardingDone||false;state.onboardingData=data.onboardingData||{name:'',goal:'',studyTime:'',notif:true};state.customSchedule=data.customSchedule||{};state.xp=data.xp||0;state.studyStreak=data.studyStreak||0;state.lastStudyDate=data.lastStudyDate||null;state.readNotifications=data.readNotifications||{};state.notifications=data.notifications||state.notifications||[];state.lastNotifCheck=data.lastNotifCheck||state.lastNotifCheck||null;state._lastSentNotifs=data._lastSentNotifs||state._lastSentNotifs||{};state.quranTab=data.quranTab||'surahs';state.quranSurahs=Array.isArray(data.quranSurahs)?data.quranSurahs:wwQuranDefaultSurahs();state.quranJuz=Array.isArray(data.quranJuz)?data.quranJuz:wwQuranDefaultJuz();state.quranKhatmas=Array.isArray(data.quranKhatmas)?data.quranKhatmas:[];state.quranCurrentKhatmaId=data.quranCurrentKhatmaId||null;state.adaptiveRevision=data.adaptiveRevision||null;state.adaptiveQuestionStats=data.adaptiveQuestionStats||{};state.adaptiveCustomQuestions=data.adaptiveCustomQuestions||{};wwQuranEnsureData()}if(window.WWMastery)window.WWMastery.syncState(state);if(!state.notifications)state.notifications=[];if(!state.readNotifications)state.readNotifications={};if(!state._lastSentNotifs)state._lastSentNotifs={}}catch(e){console.warn('Load error',e);state.subjects=MASTER_SUBJECTS;state.topics=TOPICS_SEED;state.languages=JSON.parse(JSON.stringify(LANGUAGES));state.notifications=[];state.readNotifications={}}}
 
 var chatMsgs=document.getElementById('chatbot-messages');
 var chatInput=document.getElementById('chatbot-input');
@@ -1581,9 +1715,10 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'63.0',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:63.0,schemaVersion:3};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'63.5',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:63.2,schemaVersion:3};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
+window.WWAdaptiveAPI={summary:wwAdaptiveSummary,build:function(limit){return window.WWAdaptiveRevision?window.WWAdaptiveRevision.build(state,limit):[]},start:wwStartAdaptiveRevision,answer:wwAdaptiveAnswer};
 window.WWResourceAPI={
   getAllResources:getAllResources,
   getResourceIcon:getResourceIcon,
