@@ -1,4 +1,4 @@
-/* WHITE WOLF V63.0 — Mastery Engine */
+/* WHITE WOLF V63.2 — Mastery Engine */
 (function(){
   'use strict';
   var STAGES=['Pas commencé','Compréhension','Application','Exercices','Autonomie'];
@@ -20,7 +20,7 @@
   }
   function syncState(state){
     if(!state.mastery)state.mastery={};
-    (state.topics||[]).forEach(function(t){var m=ensure(state,t.id);if(state.progress&&state.progress[t.id]&&m.stage===undefined)syncTopic(state,t.id);if(m.sessions==null)m.sessions=0;if(m.studyMinutes==null)m.studyMinutes=0;if(m.errorCount==null)m.errorCount=0;if(m.errorSuccess==null)m.errorSuccess=0;if(m.reviewCount==null)m.reviewCount=0});
+    (state.topics||[]).forEach(function(t){ensure(state,t.id);if(state.progress&&state.progress[t.id]&&state.mastery[t.id].stage===undefined)syncTopic(state,t.id)});
     return state.mastery;
   }
   function evidence(state,topicId){
@@ -46,5 +46,5 @@
   function recordSession(state,topicId,duration){if(!topicId)return;var m=ensure(state,topicId);m.sessions=(m.sessions||0)+1;m.studyMinutes=(m.studyMinutes||0)+(Number(duration)||0);m.lastEvidence='session';m.updatedAt=new Date().toISOString()}
   function recordError(state,topicId){if(!topicId)return;var m=ensure(state,topicId);m.errorCount=(m.errorCount||0)+1;m.lastEvidence='error';m.updatedAt=new Date().toISOString()}
   function recordReview(state,topicId,success){if(!topicId)return;var m=ensure(state,topicId);m.reviewCount=(m.reviewCount||0)+1;if(success)m.errorSuccess=(m.errorSuccess||0)+1;m.lastEvidence='review';m.updatedAt=new Date().toISOString()}
-  window.WWMastery={version:'63.0',stages:STAGES,ensure:ensure,syncTopic:syncTopic,syncState:syncState,evidence:evidence,score:score,recommendedStage:recommendedStage,label:label,recordSession:recordSession,recordError:recordError,recordReview:recordReview};
+  window.WWMastery={version:'63.2',stages:STAGES,ensure:ensure,syncTopic:syncTopic,syncState:syncState,evidence:evidence,score:score,recommendedStage:recommendedStage,label:label,recordSession:recordSession,recordError:recordError,recordReview:recordReview};
 })();

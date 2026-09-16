@@ -1,4 +1,4 @@
-/* WHITE WOLF V63.0 — State Factory */
+/* WHITE WOLF V63.5 — State Factory */
 (function(){
   'use strict';
   function createState(seed){
@@ -11,11 +11,11 @@
       languages:seed.languages||[], langDone:{}, flashcards:{}, fcReview:{}, tasks:[], exams:[], resources:{}, ignoredTopics:{},
       settings:{showSmartRevision:true, notifications:true}, onboardingDone:false, onboardingStep:0,
       onboardingData:{name:'',goal:'',studyTime:'',notif:true}, customSchedule:{}, isEditingPlanning:false,
-      modal:null, isSettingsOpen:false, studyStreak:0, lastStudyDate:null, xp:0, reviewSession:null,
+      modal:null, isSettingsOpen:false, studyStreak:0, lastStudyDate:null, xp:0, reviewSession:null, adaptiveRevision:null, adaptiveQuestionStats:{}, adaptiveCustomQuestions:{},
       quranTab:'surahs', quranSurahs:[], quranJuz:[], quranKhatmas:[], quranCurrentKhatmaId:null,
       notifications:[], readNotifications:{}, lastNotifCheck:0, _lastSentNotifs:{}
     };
   }
   function createPomodoro(){return {workTime:25,breakTime:5,remaining:25*60,isRunning:false,isBreak:false,timerId:null,freeMode:false};}
-  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.0'};
+  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.5'};
 })();

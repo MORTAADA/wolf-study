@@ -1,4 +1,4 @@
-/* WHITE WOLF V63.0 — Feature Controllers
+/* WHITE WOLF V63.2 — Feature Controllers
  * Thin orchestration layer. Controllers receive explicit dependencies from the app;
  * they do not reach into private application scope or own persistence.
  */

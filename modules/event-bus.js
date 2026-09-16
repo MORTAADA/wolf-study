@@ -1,4 +1,4 @@
-/* WHITE WOLF V63.0 — Event Bus Contract */
+/* WHITE WOLF V63.2 — Event Bus Contract */
 (function(){
   'use strict';
   var listeners=Object.create(null);
@@ -15,5 +15,5 @@
     var a=(listeners[type]||[]).slice();
     a.forEach(function(fn){try{fn(payload)}catch(e){console.warn('WWEventBus listener error',type,e)}});
   }
-  window.WWEventBus={on:on,off:off,emit:emit,version:'63.0'};
+  window.WWEventBus={on:on,off:off,emit:emit,version:'63.2'};
 })();
