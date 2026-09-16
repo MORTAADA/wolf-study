@@ -1,4 +1,4 @@
-/* WHITE WOLF V59 — Feature Controllers
+/* WHITE WOLF V63.0 — Feature Controllers
  * Thin orchestration layer. Controllers receive explicit dependencies from the app;
  * they do not reach into private application scope or own persistence.
  */
@@ -17,7 +17,7 @@
       edit:function(){state.isEditingPlanning=true;ctx.render()},
       cancel:function(){state.isEditingPlanning=false;ctx.render()},
       resetDay:function(key){var i=document.getElementById('planning-input-'+key);if(i)i.value=ctx.DEFAULT_SCHEDULE[key]||''},
-      save:function(){var keys=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'],ns={};keys.forEach(function(k){var i=document.getElementById('planning-input-'+k);if(i)ns[k]=i.value.trim()});state.customSchedule=ns;state.isEditingPlanning=false;finish()}
+      save:function(){var keys=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'],ns={};keys.forEach(function(k){var i=document.getElementById('planning-input-'+k);if(i)ns[k]=String(i.value||'').replace(/\r\n?/g,'\n').trim()});state.customSchedule=ns;state.isEditingPlanning=false;if(window.WWEventBus)WWEventBus.emit('PLANNING_UPDATED',{schedule:Object.assign({},ns),updatedAt:new Date().toISOString(),source:'planning'});finish()}
     };
     var tasks={
       add:function(){state.modal={type:'task'};ctx.render()},
@@ -32,7 +32,7 @@
     };
     var study={
       open:function(topicId){state.modal={type:'session',topicId:topicId};ctx.render()},
-      save:function(topicId){var date=document.getElementById('session-date').value,duration=parseInt(document.getElementById('session-duration').value),p=ctx.getProgress(topicId);p.level=Math.min(p.level+1,4);p.score=ctx.computeMasteryScore(topicId);p.last_studied=ctx.wwLocalDateISO(new Date());state.progress[topicId]=p;state.xp+=5;state.sessions.push({id:ctx.generateId(),topic_id:topicId,date:date,duration:duration});state.modal=null;ctx.showToast('✅ Session enregistrée');finish()}
+      save:function(topicId){var date=document.getElementById('session-date').value,duration=parseInt(document.getElementById('session-duration').value),p=ctx.getProgress(topicId);p.level=Math.min(p.level+1,4);p.score=ctx.computeMasteryScore(topicId);p.last_studied=ctx.wwLocalDateISO(new Date());state.progress[topicId]=p;state.xp+=5;var started=new Date(date+'T12:00:00').toISOString();state.sessions.push({id:ctx.generateId(),topic_id:topicId,subject_id:(state.topics.find(function(t){return t.id===topicId})||{}).subject_id||null,date:date,duration:duration,source:'manual',started_at:started,ended_at:new Date(new Date(started).getTime()+duration*60000).toISOString()});if(window.WWMastery)window.WWMastery.recordSession(state,topicId,duration);state.modal=null;ctx.showToast('✅ Session enregistrée');finish()}
     };
     var flashcards={
       start:function(){var L=ctx.getLang(state.fcLang||state.langId),due=ctx.getCardsDueToday(L.id);if(!due.length){ctx.showToast('Aucune carte');return}state.fcSession={cards:due,currentIdx:0,reviewed:0,correct:0};state.fcScreen='session';state.fcFlipped=false;ctx.render()},

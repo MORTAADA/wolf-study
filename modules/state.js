@@ -1,4 +1,4 @@
-/* WHITE WOLF V57 — State Factory */
+/* WHITE WOLF V63.0 — State Factory */
 (function(){
   'use strict';
   function createState(seed){
@@ -7,7 +7,7 @@
       route:'dashboard', subjectId:null, topicId:null, langId:null, levelKey:'B2', lessonNum:null,
       statsTab:'overview', errFilter:'all', fcLang:null, fcScreen:'list', fcSession:null, fcFlipped:false,
       resFilter:'Tout', resSearch:'', resOpenGroups:{}, pendingResourceHandle:null, pendingResourceFile:null,
-      subjects:seed.subjects||[], topics:seed.topics||[], progress:{}, sessions:[], errors:[], programming:{},
+      subjects:seed.subjects||[], topics:seed.topics||[], progress:{}, mastery:{}, sessions:[], errors:[], programming:{},
       languages:seed.languages||[], langDone:{}, flashcards:{}, fcReview:{}, tasks:[], exams:[], resources:{}, ignoredTopics:{},
       settings:{showSmartRevision:true, notifications:true}, onboardingDone:false, onboardingStep:0,
       onboardingData:{name:'',goal:'',studyTime:'',notif:true}, customSchedule:{}, isEditingPlanning:false,
@@ -17,5 +17,5 @@
     };
   }
   function createPomodoro(){return {workTime:25,breakTime:5,remaining:25*60,isRunning:false,isBreak:false,timerId:null,freeMode:false};}
-  window.WWState={create:createState,createPomodoro:createPomodoro,version:'62.5'};
+  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.0'};
 })();

@@ -1,4 +1,4 @@
-/* WHITE WOLF SCHOLAR V60 — Service Layer
+/* WHITE WOLF SCHOLAR V63.0 — Service Layer
  * Stable application services. Features depend on contracts, not implementation details.
  */
 (function(){
@@ -29,6 +29,6 @@
     router:router,
     renderer:renderer,
     controllers:controllers,
-    version:'62.5'
+    version:'63.0'
   };
 })();
