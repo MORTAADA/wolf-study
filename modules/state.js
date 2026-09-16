@@ -17,5 +17,5 @@
     };
   }
   function createPomodoro(){return {workTime:25,breakTime:5,remaining:25*60,isRunning:false,isBreak:false,timerId:null,freeMode:false};}
-  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.6'};
+  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.6.3'};
 })();
