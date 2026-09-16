@@ -1,4 +1,4 @@
-/* WHITE WOLF V63.5 — State Factory */
+/* WHITE WOLF V63.6 — State Factory */
 (function(){
   'use strict';
   function createState(seed){
@@ -17,5 +17,5 @@
     };
   }
   function createPomodoro(){return {workTime:25,breakTime:5,remaining:25*60,isRunning:false,isBreak:false,timerId:null,freeMode:false};}
-  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.5'};
+  window.WWState={create:createState,createPomodoro:createPomodoro,version:'63.6'};
 })();

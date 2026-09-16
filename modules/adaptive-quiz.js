@@ -1,4 +1,4 @@
-/* WHITE WOLF V63.5 — Topic Question Bank
+/* WHITE WOLF V63.6 — Topic Question Bank
  * Local academic question bank for Adaptive Revision.
  * Questions are attached to real topic IDs; no external API is required.
  */
@@ -288,5 +288,5 @@
     (topics||[]).forEach(function(t){var n=(BANK[t.id]||[]).length;if(n){covered++;questions+=n}});
     return {topics:total,covered:covered,missing:Math.max(0,total-covered),questions:questions,coveragePercent:total?Math.round(covered/total*100):0};
   }
-  global.WWAdaptiveQuiz={version:'63.5',get:get,list:list,all:all,coverage:coverage,targetDifficulty:targetDifficulty,bank:BANK};
+  global.WWAdaptiveQuiz={version:'63.6',get:get,list:list,all:all,coverage:coverage,targetDifficulty:targetDifficulty,bank:BANK};
 })(window);
