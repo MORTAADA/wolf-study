@@ -9,7 +9,8 @@
   function open(){
     return new Promise(function(resolve,reject){
       if(!window.indexedDB){unavailable=true;reject(new Error('IndexedDB indisponible'));return;}
-      var settled=false, timer=setTimeout(function(){if(settled)return;settled=true;unavailable=true;reject(new Error('IndexedDB timeout'))},5000), req;
+      // Fail fast on blocked/slow IndexedDB so the app can use its localStorage fallback.
+      var settled=false, timer=setTimeout(function(){if(settled)return;settled=true;unavailable=true;reject(new Error('IndexedDB timeout'))},1800), req;
       try{req=indexedDB.open(DB_NAME,2)}catch(e){clearTimeout(timer);unavailable=true;reject(e);return}
       req.onupgradeneeded=function(ev){var d=ev.target.result;if(!d.objectStoreNames.contains(STORE_NAME))d.createObjectStore(STORE_NAME,{keyPath:'key'});if(!d.objectStoreNames.contains('resourceFiles'))d.createObjectStore('resourceFiles',{keyPath:'key'})};
       req.onblocked=function(){console.warn('White Wolf: IndexedDB bloquée.')};
