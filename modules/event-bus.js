@@ -15,5 +15,5 @@
     var a=(listeners[type]||[]).slice();
     a.forEach(function(fn){try{fn(payload)}catch(e){console.warn('WWEventBus listener error',type,e)}});
   }
-  window.WWEventBus={on:on,off:off,emit:emit,version:'62.4'};
+  window.WWEventBus={on:on,off:off,emit:emit,version:'62.5'};
 })();

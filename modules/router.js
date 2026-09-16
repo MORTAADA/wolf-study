@@ -14,9 +14,12 @@
       }
       state.isEditingPlanning=false;
       state.isSettingsOpen=false;
+      // Close transient overlays/modals when navigation is requested from inside them.
+      // This prevents modal content from remaining on top of the destination route.
+      state.modal=null;
       if(window.WWEventBus)window.WWEventBus.emit('route:change',{route:route,params:params||null});
       return render();
     };
   }
-  window.WWRouter={create:createRouter,version:'62.4'};
+  window.WWRouter={create:createRouter,version:'62.5'};
 })();
