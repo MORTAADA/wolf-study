@@ -1415,7 +1415,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .ww-focus-empty{margin-top:10px;color:#70849f;font-size:11px}
 @media(max-width:420px){.ww-focus-row{flex-direction:column}.ww-focus-row .btn-primary{width:100%}}
 
-/* WHITE WOLF V62.4 — Focus Session visibility fix
+/* WHITE WOLF V62.5 — Focus Session visibility fix
    The V55 mobile performance rule applies content-visibility:auto to cards.
    Focus Session is interactive and must always render its inner controls. */
 .ww-focus-cockpit{display:block;min-height:0;overflow:visible;}
@@ -1428,7 +1428,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 }
 
 /* ============================================================
-   V62.4 — EMPLOI DU TEMPS 2.0
+   V62.5 — EMPLOI DU TEMPS 2.0
    Mobile-first academic schedule intelligence
    ============================================================ */
 .emploi-head{margin-bottom:14px}
@@ -1493,7 +1493,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .emploi-master-link span{font-size:10px;color:#6f86a5}.emploi-master-link strong{font-size:13px;color:#c8d8ed}.emploi-master-link small{font-size:10px;color:#7187a4}.emploi-master-link.muted{font-size:11px;color:#667d99}
 @media(min-width:700px){.emploi-summary{grid-template-columns:repeat(4,1fr)}.emploi-course{padding:13px 17px}.emploi-course-title{font-size:14px}.emploi-detail-grid{grid-template-columns:repeat(4,1fr)}}
 
-/* WHITE WOLF V62.4 — EMPLOI LIVE SCHEDULE */
+/* WHITE WOLF V62.5 — EMPLOI LIVE SCHEDULE */
 .emploi-date{font-size:10px;color:#58708f;margin-top:7px;text-transform:capitalize}
 .emploi-live-clock{margin-top:9px;font-size:10px;color:#7390ad;display:flex;align-items:center;gap:5px}
 .emploi-upcoming{margin:0 0 12px;padding:10px 12px;border:1px solid #1b2b3d;border-radius:14px;background:linear-gradient(145deg,#0d1824,#0a141f)}

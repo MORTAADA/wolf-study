@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-// V62.4 Dependency Container — application code consumes stable service contracts.
+// V62.5 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
 if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
@@ -390,7 +390,7 @@ async function getPersistentFile(handle){
    Persistent FileSystemFileHandle is stored; file bytes stay
    in phone storage. Reader uses an object URL only while open.
    ========================================================= */
-/* V62.4 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
+/* V62.5 — Reader compatibility bridge. Rendering is owned by modules/reader.js. */
 async function wwOpenResourceInApp(sid,rid){
   var r=null;
   Object.keys(state.resources[sid]||{}).some(function(f){
@@ -1017,7 +1017,7 @@ function renderIntelligenceBrief(){
 function wwFocusTopic(){return state.topics.find(function(t){return t.id===wwFocusTopicId})||null}
 function wwSetFocusTopic(id){wwFocusTopicId=id||'';try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){};render()}
 function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());state.sessions.push({id:generateId(),topic_id:topic.id,date:today,duration:duration,source:'focus'});state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=computeMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
-function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V62.4</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
+function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+state.topics.map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+t.id+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?sub.name+' · ':'')+t.title+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V62.5</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+selected.title+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
 function renderDashboard(){
   var tt=state.topics.length;
   var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
@@ -1527,7 +1527,7 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pick-resource-file]').forEach(function(el){el.onclick=function(){
     var input=document.getElementById('resource-file');
     if(!input){showToast('Sélecteur de fichier indisponible');return;}
-    // V62.4 Android/PWA fix: open the native <input type=file> directly from
+    // V62.5 Android/PWA fix: open the native <input type=file> directly from
     // the user gesture. Waiting for showOpenFilePicker() and then calling
     // input.click() loses Android's user-activation token, so the fallback
     // picker may silently do nothing. The native picker is the most reliable
@@ -1625,8 +1625,8 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'62.4',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:62.4,schemaVersion:3};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'62.5',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:62.5,schemaVersion:3};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
 window.WWResourceAPI={
   getAllResources:getAllResources,
