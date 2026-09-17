@@ -1,5 +1,5 @@
-/* White Wolf Scholar — V65.20 Integration & Reliability Cache */
-const CACHE_NAME = "white-wolf-scholar-v65.21";
+/* White Wolf Scholar — V65.23 Integration & Reliability Cache */
+const CACHE_NAME = "white-wolf-scholar-v65.23";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -27,9 +27,9 @@ const APP_SHELL = [
   "./modules/services.js?v=65.21",
   "./modules/dependency.js?v=65.21",
   "./modules/architecture.js?v=65.21",
-"./modules/document-intelligence.js?v=65.21",
+  "./modules/document-intelligence.js?v=65.21",
   "./modules/document-map.js?v=65.21",
-"./modules/mastery-engine.js?v=65.21",
+  "./modules/mastery-engine.js?v=65.21",
   "./modules/adaptive-revision.js?v=65.21",
   "./modules/adaptive-quiz.js?v=65.21",
   "./modules/analytics-engine.js?v=65.21",

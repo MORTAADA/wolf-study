@@ -364,6 +364,7 @@ textarea{resize:vertical;min-height:60px}
   .stats-hero .sh-box{padding:8px 4px}
   .stats-hero .sh-box .sh-num{font-size:16px}
 }
+
 .message{margin-bottom:12px;max-width:90%;padding:10px 14px;border-radius:12px;line-height:1.4;font-size:13px;word-wrap:break-word}
 .message.bot{background:#1a2430;color:#e2e8f0;border-bottom-left-radius:4px;border-left:3px solid #4b7bec;margin-right:auto}
 .message.bot strong{color:#8fb3e6}
@@ -664,6 +665,7 @@ img,svg{max-width:100%}
 .ww-icon-inline{width:1.15em;height:1.15em;vertical-align:-.2em;margin:0 .08em}
 .ww-icon-sm{width:1.1em;height:1.1em;vertical-align:-.18em}
 .ww-icon-chat{width:1.45em;height:1.45em}
+.voice-btn .ww-icon{width:19px;height:19px}
 
 /* Keep icon geometry stable on compact screens */
 @media (max-width:600px){
@@ -1598,9 +1600,9 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
   .ww-scope-actions .btn-small{flex:1;min-height:44px}
   .subject-grid{grid-template-columns:1fr;gap:8px}
 }
-@media(max-width:600px){}
-@media(max-width:600px){}
-@media(max-width:600px){}
+
+
+/* V64.6 — Tutor feedback */
 /* V64.6 — Scientific PDF Reader */
 .ww-pdf-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:rgba(10,14,20,.94);border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2}
 .ww-reader-pdf-action{border:1px solid rgba(143,179,230,.28);background:rgba(75,123,236,.12);color:#eef4ff;border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:700}
@@ -1619,6 +1621,156 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 .ww-docmap-row{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:10px;align-items:center;padding:11px;border:1px solid rgba(143,179,230,.12);border-radius:12px;background:rgba(10,14,20,.5)}
 .ww-docmap-title{min-width:0}.ww-docmap-title strong{display:block;font-size:14px;line-height:1.35}.ww-docmap-title small{display:block;margin-top:4px;color:#8295ad;font-size:11px}
 .ww-docmap-row select{min-width:0}
-@media(max-width:620px){.ww-docmap-row{grid-template-columns:1fr}.ww-docmap-list{max-height:55vh}}.ww-ai-toggle{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #263750;border-radius:12px;background:rgba(8,16,28,.7);font-weight:700}.ww-ai-toggle input{width:20px;height:20px}@media(max-width:520px){}
-@media(max-width:600px){}
-@media(max-width:620px){}@media(max-width:620px){}
+@media(max-width:620px){.ww-docmap-row{grid-template-columns:1fr}.ww-docmap-list{max-height:55vh}}
+/* V65.1 Section Tutor */
+
+.ww-ai-settings-modal{max-width:520px}.ww-ai-toggle{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #263750;border-radius:12px;background:rgba(8,16,28,.7);font-weight:700}.ww-ai-toggle input{width:20px;height:20px}.ww-ai-settings-modal label{display:grid;gap:7px}.ww-ai-settings-modal input,.ww-ai-settings-modal select{width:100%;box-sizing:border-box}@media(max-width:520px){.ww-ai-settings-modal{width:calc(100vw - 24px);padding:16px}}
+
+/* V65.5 — Socratic Tutor */
+
+/* V65.9 — Tutor Session Dashboard & Replay */
+
+
+/* V65.23 — Resource Intelligence */
+.ww-resource-intel{margin:12px 0 14px;padding:14px;border:1px solid rgba(143,179,230,.18);background:linear-gradient(135deg,rgba(20,34,50,.92),rgba(10,18,27,.92))}
+.ww-resource-intel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.ww-resource-intel-sub{font-size:11px;color:#8194ac;margin-top:4px}.ww-resource-intel-badge{font-size:10px;padding:5px 8px;border:1px solid rgba(143,179,230,.22);border-radius:999px;color:#9bb8dd}
+.ww-resource-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.ww-resource-kpis>div{padding:10px;border-radius:12px;background:rgba(7,18,30,.65);border:1px solid rgba(143,179,230,.1)}.ww-resource-kpis b{display:block;font-size:20px;color:#e8eef7}.ww-resource-kpis span,.ww-resource-kpis small{display:block;font-size:10px;color:#8ca0b8;margin-top:2px}
+.ww-resource-recommendations{margin-top:13px}.ww-resource-recommendations>strong{display:block;font-size:11px;margin-bottom:7px}.ww-resource-rec{width:100%;display:flex;align-items:center;gap:9px;text-align:left;border:1px solid rgba(143,179,230,.1);background:rgba(7,18,30,.5);color:inherit;border-radius:11px;padding:9px;margin-top:6px;cursor:pointer}.ww-resource-rec:hover{border-color:rgba(143,179,230,.28)}.ww-rec-score{min-width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:rgba(75,123,236,.14);color:#a8c2e5;font-weight:800}.ww-resource-rec span:nth-child(2){flex:1;min-width:0}.ww-resource-rec b,.ww-resource-rec small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ww-resource-rec small{font-size:9px;color:#8194ac;margin-top:2px}.ww-resource-rec i{font-style:normal;color:#7f96b4;font-size:18px}
+.ww-resource-gap{margin-top:12px;padding:9px;border-radius:10px;background:rgba(232,204,106,.05);border:1px solid rgba(232,204,106,.12)}.ww-resource-gap strong{display:block;font-size:10px}.ww-resource-gap span{display:block;font-size:10px;color:#9baabd;margin-top:4px;line-height:1.5}
+.ww-resource-search-modal input{width:100%;box-sizing:border-box}.ww-resource-content-results{margin-top:10px;max-height:52vh;overflow:auto}.ww-resource-result{display:block;width:100%;text-align:left;border:1px solid rgba(143,179,230,.1);background:rgba(7,18,30,.5);color:inherit;border-radius:10px;padding:10px;margin-bottom:7px}.ww-resource-result b,.ww-resource-result small,.ww-resource-result span{display:block}.ww-resource-result small{font-size:9px;color:#8194ac;margin:3px 0}.ww-resource-result span{font-size:11px;line-height:1.5;color:#b8c7d9}
+@media(max-width:600px){.ww-resource-kpis{grid-template-columns:repeat(3,1fr)}.ww-resource-kpis>div{padding:8px 6px}.ww-resource-kpis b{font-size:17px}.ww-resource-intel{padding:12px}}
+
+
+/* =========================
+   V65.23 UI/UX Refinement
+   ========================= */
+
+/* Clearer interaction affordances */
+button, a, [role="button"], input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, [role="button"] {
+  min-height: 42px;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* Consistent readable text flow */
+p, li, .description, .subtitle, .muted, .secondary-text {
+  line-height: 1.55;
+}
+
+/* Reduce accidental horizontal overflow on mobile */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+}
+
+/* Better mobile touch ergonomics */
+@media (max-width: 768px) {
+  button, a, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  button, [role="button"] {
+    min-height: 44px;
+  }
+
+  input, select, textarea {
+    font-size: 16px; /* avoids iOS zoom */
+  }
+
+  .card, .panel, .modal, .sheet {
+    max-width: 100%;
+  }
+}
+
+/* Empty / loading / error / success states */
+.wws-empty-state,
+.wws-loading-state,
+.wws-error-state,
+.wws-success-state {
+  border-radius: 14px;
+  padding: 18px;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.wws-empty-state {
+  opacity: .88;
+}
+
+.wws-loading-state {
+  opacity: .82;
+}
+
+.wws-error-state {
+  border: 1px solid currentColor;
+}
+
+.wws-success-state {
+  border: 1px solid currentColor;
+}
+
+/* Avoid excessive animation and respect accessibility preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Safe-area support for modern phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* More comfortable sticky bottom navigation when present */
+nav.fixed, .bottom-nav, .mobile-nav, [class*="bottom-nav"] {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/* Prevent long labels from breaking cards */
+.card-title, .subject-title, .topic-title, .resource-title {
+  overflow-wrap: anywhere;
+}
+
+/* Subtle hierarchy helpers; inherit the app's existing palette */
+.wws-primary-action {
+  font-weight: 700;
+}
+
+.wws-secondary-action {
+  opacity: .9;
+}
+
+.wws-meta {
+  font-size: .86em;
+  opacity: .72;
+}
+
+
+
+/* V65.23 Study Performance UI */
+.wws-performance-panel{display:grid;gap:12px;margin:16px 0}
+.wws-performance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.wws-performance-card{padding:14px;border-radius:14px;border:1px solid currentColor;opacity:.96}
+.wws-performance-value{font-size:1.45rem;font-weight:800;display:block;margin-top:4px}
+.wws-performance-label{font-size:.82rem;opacity:.72}
+.wws-performance-insight{padding:14px;border-radius:14px;border:1px solid currentColor;line-height:1.55}
+@media(max-width:700px){.wws-performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.wws-performance-panel *{scroll-behavior:auto}}
+
