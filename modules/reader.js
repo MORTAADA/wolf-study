@@ -74,20 +74,8 @@
     if(!R.meta || !result || !result.text || !global.WWDocumentIntel) return;
     try{
       global.WWDocumentIntel.ingest(R.meta,result.text);
-      if(global.state){
-        global.state.chatbotPdfContext={name:R.meta.name||R.currentFile.name||'Document',text:result.text,extractedAt:new Date().toISOString(),method:result.method||'local',resourceId:R.meta.resourceId||null,topicId:R.meta.topicId||null};
-        if(global.saveState)global.saveState();
-      }
+      if(global.saveState)global.saveState();
     }catch(e){console.warn('Document intelligence ingest:',e)}
-  }
-  function addTutorButton(container){
-    if(!R.meta || !R.meta.resourceId || !container) return;
-    var b=document.createElement('button'); b.type='button'; b.className='ww-reader-pdf-action'; b.textContent='🐺 Tutoriser ce document';
-    b.addEventListener('click',function(){
-      if(global.WWChatbot && global.WWChatbot.openDocument) global.WWChatbot.openDocument(R.meta.resourceId);
-      else { var fab=document.getElementById('chatbot-fab'); if(fab)fab.click(); }
-    });
-    container.appendChild(b);
   }
 
   function renderFile(file,meta){
@@ -122,9 +110,8 @@
           ingestDocument(result); var pre=document.createElement("pre"); pre.className="ww-reader-text ww-pdf-extracted"; pre.textContent=result.text||"Aucun texte reconnu.";
           var copy=document.createElement("button"); copy.type="button"; copy.className="ww-reader-pdf-action"; copy.textContent="📋 Copier le texte";
           copy.addEventListener("click",async function(){try{await navigator.clipboard.writeText(result.text||"");copy.textContent="✓ Copié"}catch(e){copy.textContent="Copie non disponible"}});
-          var wrap=document.createElement("div");wrap.className="ww-pdf-extract-wrap";wrap.appendChild(copy);wrap.appendChild(pre);addTutorButton(wrap);R.content.innerHTML="";R.content.appendChild(wrap);
+          var wrap=document.createElement("div");wrap.className="ww-pdf-extract-wrap";wrap.appendChild(copy);wrap.appendChild(pre);R.content.innerHTML="";R.content.appendChild(wrap);
           R.status.textContent="OCR local • "+(result.pages||0)+" page(s) • "+(result.text?result.text.length:0)+" caractères";
-          if(window.state){window.state.chatbotPdfContext={name:file.name||"PDF",text:result.text||"",extractedAt:new Date().toISOString(),method:result.method};if(window.saveState)window.saveState();}
         }catch(err){info.textContent=err&&err.message?err.message:"OCR impossible";}finally{ocrBtn.disabled=false;ocrBtn.textContent="🔎 Réessayer OCR"}
       });
       extractBtn.addEventListener("click",async function(){
@@ -135,9 +122,8 @@
           ingestDocument(result); var pre=document.createElement("pre"); pre.className="ww-reader-text ww-pdf-extracted"; pre.textContent=result.text||"Aucun texte exploitable trouvé. Ce PDF peut être scanné/image ou utiliser un encodage non pris en charge.";
           var copy=document.createElement("button"); copy.type="button"; copy.className="ww-reader-pdf-action"; copy.textContent="📋 Copier le texte";
           copy.addEventListener("click",async function(){try{await navigator.clipboard.writeText(result.text||"");copy.textContent="✓ Copié"}catch(e){copy.textContent="Copie non disponible"}});
-          var wrap=document.createElement("div");wrap.className="ww-pdf-extract-wrap";wrap.appendChild(copy);wrap.appendChild(pre);addTutorButton(wrap);R.content.innerHTML="";R.content.appendChild(wrap);
+          var wrap=document.createElement("div");wrap.className="ww-pdf-extract-wrap";wrap.appendChild(copy);wrap.appendChild(pre);R.content.innerHTML="";R.content.appendChild(wrap);
           R.status.textContent="Texte extrait localement • "+(result.text?result.text.length:0)+" caractères";
-          if(window.state){window.state.chatbotPdfContext={name:file.name||"PDF",text:result.text||"",extractedAt:result.extractedAt};if(window.saveState)window.saveState();}
         }catch(err){info.textContent=err&&err.message?err.message:"Extraction impossible";extractBtn.disabled=false;extractBtn.textContent="🧠 Réessayer"}
       });
       return;
@@ -148,7 +134,7 @@
       var imgOcr=document.createElement("button");imgOcr.type="button";imgOcr.className="ww-reader-pdf-action";imgOcr.textContent="🔎 Extraire le texte (OCR)";
       var imgInfo=document.createElement("span");imgInfo.className="ww-pdf-tool-info";imgInfo.textContent="OCR optionnel — traitement local après chargement du moteur";imgTools.appendChild(imgOcr);imgTools.appendChild(imgInfo);R.content.appendChild(imgTools);
       var img=document.createElement("img");img.src=R.currentUrl;img.alt=file.name;R.content.appendChild(img);
-      imgOcr.addEventListener("click",async function(){imgOcr.disabled=true;imgOcr.textContent="⏳ OCR…";try{var rr=await window.WWOCR.run(file,function(m){if(m&&m.progress)imgInfo.textContent=Math.round(m.progress*100)+" %"});ingestDocument(rr); var pre=document.createElement("pre");pre.className="ww-reader-text ww-pdf-extracted";pre.textContent=rr.text||"Aucun texte reconnu.";R.content.appendChild(pre);if(window.state){window.state.chatbotPdfContext={name:file.name||"Image",text:rr.text||"",extractedAt:new Date().toISOString(),method:rr.method};if(window.saveState)window.saveState();}imgInfo.textContent="OCR terminé"}catch(e){imgInfo.textContent=e&&e.message?e.message:"OCR impossible"}finally{imgOcr.disabled=false;imgOcr.textContent="🔎 Réessayer OCR"}});
+      imgOcr.addEventListener("click",async function(){imgOcr.disabled=true;imgOcr.textContent="⏳ OCR…";try{var rr=await window.WWOCR.run(file,function(m){if(m&&m.progress)imgInfo.textContent=Math.round(m.progress*100)+" %"});ingestDocument(rr); var pre=document.createElement("pre");pre.className="ww-reader-text ww-pdf-extracted";pre.textContent=rr.text||"Aucun texte reconnu.";R.content.appendChild(pre);imgInfo.textContent="OCR terminé"}catch(e){imgInfo.textContent=e&&e.message?e.message:"OCR impossible"}finally{imgOcr.disabled=false;imgOcr.textContent="🔎 Réessayer OCR"}});
       return;
     }
 
