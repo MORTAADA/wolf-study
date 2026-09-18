@@ -82,7 +82,7 @@ async function exportBackup(){
     var coreData=await collectCoreData()
     var payload={
       format:"white-wolf-scholar-backup",
-      version:79.0,
+      version:79.1,
       schemaVersion:2,
       exportedAt:new Date().toISOString(),
       note:"Personal data backup. Local phone resource files and FileSystemFileHandles are intentionally excluded.",
@@ -108,7 +108,7 @@ function restoreLocalStorage(data){
 }
 function validateBackup(x){
   if(!x||x.format!=="white-wolf-scholar-backup"||!x.localStorage||typeof x.localStorage!=="object")return false;
-  if(x.version!==undefined && (typeof x.version!=="number" || x.version<45 || x.version>79.0))return false;
+  if(x.version!==undefined && (typeof x.version!=="number" || x.version<45 || x.version>79.1))return false;
   if(x.schemaVersion!==undefined && (x.schemaVersion!==1 && x.schemaVersion!==2))return false;
   return true;
 }

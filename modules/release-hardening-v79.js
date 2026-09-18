@@ -3,7 +3,7 @@
  */
 (function(global){
   'use strict';
-  var VERSION='79.0';
+  var VERSION='79.1';
   var required=['WWCorePersistence','WWAcademicRepositories','WWAcademicProjectionV68','WWAcademicEventJournal','WWArchitectureFinalGateV78'];
   var bootAt=Date.now(), errors=[];
   function record(kind,value){errors.push({kind:String(kind),message:String(value||''),at:new Date().toISOString()});if(errors.length>20)errors.shift()}
