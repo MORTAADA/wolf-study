@@ -21,6 +21,12 @@
     var x=input||{}, out={}; Object.keys(base).forEach(function(k){out[k]=base[k]});
     Object.keys(x).forEach(function(k){out[k]=x[k]});
     if(type==='session' && (x.actualMinutes==null) && x.duration!=null) out.actualMinutes=Number(x.duration||0);
+    if(type==='topic' && !out.name && x.title) out.name=x.title;
+    if(type==='task' && !out.title && x.text) out.title=x.text;
+    if(type==='task' && x.isDone!=null && x.completed==null) out.completed=!!x.isDone;
+    if(type==='session' && out.startedAt==null && x.start) out.startedAt=x.start;
+    if(type==='session' && out.endedAt==null && x.end) out.endedAt=x.end;
+    if(type==='session' && out.actualMinutes==null && x.duration!=null) out.actualMinutes=Number(x.duration||0);
     if(out.subjectId==null && out.subject_id!=null) out.subjectId=out.subject_id;
     if(out.topicId==null && out.topic_id!=null) out.topicId=out.topic_id;
     if(out.examId==null && out.exam_id!=null) out.examId=out.exam_id;

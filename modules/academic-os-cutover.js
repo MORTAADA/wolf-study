@@ -11,12 +11,19 @@
   function flatResources(v){var a=[];if(Array.isArray(v))return v;Object.keys(v||{}).forEach(function(s){Object.keys(v[s]||{}).forEach(function(f){(v[s][f]||[]).forEach(function(x){a.push(Object.assign({},x,{subjectId:x.subjectId||s}))})});});return a}
   function flatFlashcards(v){var a=[];Object.keys(v||{}).forEach(function(lang){(v[lang]||[]).forEach(function(x){if(x)a.push(Object.assign({},x,{id:x.id||('fc-'+lang+'-'+Math.random().toString(36).slice(2))}))})});return a}
   async function replaceAll(state){
-    var maps=[['subjects','subject'],['topics','topic'],['sessions','session'],['tasks','task'],['exams','exam'],['errors','error']];
-    for(var i=0;i<maps.length;i++){var k=maps[i][0],t=maps[i][1];await R[k].replace(arr(state[k]).map(function(x){return E.normalize(t,x)}));}
-    await R.resources.replace(flatResources(state.resources).map(function(x){return E.normalize('resource',x)}));
-    var mastery=[];Object.keys(state.mastery||{}).forEach(function(k){mastery.push(E.normalize('mastery',Object.assign({},state.mastery[k],{id:state.mastery[k].id||'mastery-'+k,topicId:state.mastery[k].topicId||k})))});await R.mastery.replace(mastery);
-    await R.flashcards.replace(flatFlashcards(state.flashcards).map(function(x){return E.normalize('flashcard',x)}));
-    await R.planning.replace([E.normalize('planning',{id:'planning-week',items:Object.keys(state.customSchedule||{}).map(function(day){return {day:day,text:state.customSchedule[day]||''}}),updatedAt:new Date().toISOString()})]);
+    var maps={};
+    maps.subjects=arr(state.subjects).map(function(x){return E.normalize('subject',x)});
+    maps.topics=arr(state.topics).map(function(x){return E.normalize('topic',x)});
+    maps.sessions=arr(state.sessions).map(function(x){return E.normalize('session',x)});
+    maps.tasks=arr(state.tasks).map(function(x){return E.normalize('task',x)});
+    maps.exams=arr(state.exams).map(function(x){return E.normalize('exam',x)});
+    maps.errors=arr(state.errors).map(function(x){return E.normalize('error',x)});
+    maps.resources=flatResources(state.resources).map(function(x){return E.normalize('resource',x)});
+    var mastery=[];Object.keys(state.mastery||{}).forEach(function(k){var v=state.mastery[k]||{};mastery.push(E.normalize('mastery',Object.assign({},v,{id:v.id||'mastery-'+k,topicId:v.topicId||k})))});maps.mastery=mastery;
+    maps.flashcards=flatFlashcards(state.flashcards).map(function(x){return E.normalize('flashcard',x)});
+    maps.planning=[E.normalize('planning',{id:'planning-week',items:Object.keys(state.customSchedule||{}).map(function(day){return {day:day,text:state.customSchedule[day]||''}}),updatedAt:new Date().toISOString()})];
+    if(R.batchReplace)await R.batchReplace(maps);
+    else for(var k in maps)if(R[k])await R[k].replace(maps[k]);
   }
   async function hydrate(state){
     var academic=await Promise.all([R.subjects.getAll(),R.topics.getAll(),R.sessions.getAll(),R.tasks.getAll(),R.resources.getAll(),R.exams.getAll(),R.errors.getAll(),R.mastery.getAll(),R.flashcards.getAll(),R.planning.getAll()]);

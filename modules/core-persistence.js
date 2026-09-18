@@ -26,8 +26,25 @@
     if(unavailable||!db){if(key==='appState')fallbackWrite(value);return Promise.resolve()}
     return new Promise(function(resolve,reject){var done=false;function fail(err){if(done)return;if(key==='appState'&&fallbackWrite(value)){done=true;resolve();return}done=true;reject(err||new Error('IndexedDB write error'))}try{var tx=db.transaction(STORE_NAME,'readwrite'),r=tx.objectStore(STORE_NAME).put({key:key,value:value});r.onsuccess=function(){if(done)return;done=true;if(key==='appState')fallbackWrite(value);resolve()};r.onerror=function(){fail(r.error)};tx.onerror=function(){fail(tx.error)};tx.onabort=function(){fail(tx.error)}}catch(e){fail(e)}});
   }
+  function batchSet(entries){
+    entries=Array.isArray(entries)?entries:[];
+    if(!entries.length)return Promise.resolve();
+    if(unavailable||!db){
+      entries.forEach(function(e){if(e&&e.key==='appState')fallbackWrite(e.value)});
+      return Promise.resolve();
+    }
+    return new Promise(function(resolve,reject){
+      try{
+        var tx=db.transaction(STORE_NAME,'readwrite'),store=tx.objectStore(STORE_NAME);
+        entries.forEach(function(e){if(e&&e.key)store.put({key:e.key,value:e.value})});
+        tx.oncomplete=function(){entries.forEach(function(e){if(e&&e.key==='appState')fallbackWrite(e.value)});resolve()};
+        tx.onerror=function(){reject(tx.error||new Error('IndexedDB batch write error'))};
+        tx.onabort=function(){reject(tx.error||new Error('IndexedDB batch transaction aborted'))};
+      }catch(e){reject(e)}
+    });
+  }
   function fileSet(key,value){if(unavailable||!db)return Promise.reject(new Error('Stockage de fichiers indisponible'));return new Promise(function(resolve,reject){try{var tx=db.transaction('resourceFiles','readwrite'),r=tx.objectStore('resourceFiles').put({key:key,value:value});r.onsuccess=function(){resolve()};r.onerror=function(){reject(r.error)}}catch(e){reject(e)}})}
   function fileGet(key){if(unavailable||!db)return Promise.reject(new Error('Stockage de fichiers indisponible'));return new Promise(function(resolve,reject){try{var tx=db.transaction('resourceFiles','readonly'),r=tx.objectStore('resourceFiles').get(key);r.onsuccess=function(){resolve(r.result?r.result.value:null)};r.onerror=function(){reject(r.error)}}catch(e){reject(e)}})}
   function fileDelete(key){if(unavailable||!db)return Promise.resolve();return new Promise(function(resolve,reject){try{var tx=db.transaction('resourceFiles','readwrite'),r=tx.objectStore('resourceFiles').delete(key);r.onsuccess=function(){resolve()};r.onerror=function(){reject(r.error)}}catch(e){reject(e)}})}
-  window.WWCorePersistence={open:open,get:get,set:set,fileSet:fileSet,fileGet:fileGet,fileDelete:fileDelete,readFallback:fallbackRead,writeFallback:fallbackWrite,dbName:DB_NAME,schemaVersion:2,get unavailable(){return unavailable}};
+  window.WWCorePersistence={open:open,get:get,set:set,batchSet:batchSet,fileSet:fileSet,fileGet:fileGet,fileDelete:fileDelete,readFallback:fallbackRead,writeFallback:fallbackWrite,dbName:DB_NAME,schemaVersion:2,get unavailable(){return unavailable}};
 })();

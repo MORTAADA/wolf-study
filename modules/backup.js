@@ -56,6 +56,17 @@ function collectResourceMetadata(){
     };
   });
 }
+async function collectCoreData(){
+  var out={};
+  try{
+    if(window.WWCorePersistence&&window.WWCorePersistence.get){
+      var keys=["appState","wws.academic.eventJournal.v1","wws.academic.eventOutbox.v1","wws.academic.repositories.v1.subjects","wws.academic.repositories.v1.topics","wws.academic.repositories.v1.sessions","wws.academic.repositories.v1.tasks","wws.academic.repositories.v1.resources","wws.academic.repositories.v1.exams","wws.academic.repositories.v1.errors","wws.academic.repositories.v1.flashcards","wws.academic.repositories.v1.mastery"];
+      for(var i=0;i<keys.length;i++){var v=await window.WWCorePersistence.get(keys[i]);if(v!==null&&v!==undefined)out[keys[i]]=v;}
+    }
+  }catch(e){}
+  return out;
+}
+
 function downloadJSON(obj,name){
   var blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
   var url=URL.createObjectURL(blob),a=document.createElement("a");
@@ -68,14 +79,16 @@ async function exportBackup(){
     if(window.WWPersistence&&window.WWPersistence.save) await window.WWPersistence.save();
     var metadata=[];
     try{metadata=await collectResourceMetadata()}catch(e){metadata=[]}
+    var coreData=await collectCoreData()
     var payload={
       format:"white-wolf-scholar-backup",
-      version:63.2,
+      version:79.0,
       schemaVersion:2,
       exportedAt:new Date().toISOString(),
       note:"Personal data backup. Local phone resource files and FileSystemFileHandles are intentionally excluded.",
       localStorage:collectLocalStorage(),
-      resourceMetadata:metadata
+      resourceMetadata:metadata,
+    coreData:coreData
     };
     var stamp=new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
     downloadJSON(payload,"white-wolf-backup-"+stamp+".json");
@@ -95,7 +108,7 @@ function restoreLocalStorage(data){
 }
 function validateBackup(x){
   if(!x||x.format!=="white-wolf-scholar-backup"||!x.localStorage||typeof x.localStorage!=="object")return false;
-  if(x.version!==undefined && (typeof x.version!=="number" || x.version<45 || x.version>63.2))return false;
+  if(x.version!==undefined && (typeof x.version!=="number" || x.version<45 || x.version>79.0))return false;
   if(x.schemaVersion!==undefined && (x.schemaVersion!==1 && x.schemaVersion!==2))return false;
   return true;
 }
@@ -106,6 +119,9 @@ function restoreBackup(file){
       var data=JSON.parse(reader.result);
       if(!validateBackup(data)){setStatus("Invalid White Wolf backup file.");return}
       var n=restoreLocalStorage(data.localStorage);
+      if(data.coreData&&window.WWCorePersistence&&window.WWCorePersistence.set){
+        Object.keys(data.coreData).forEach(function(k){try{window.WWCorePersistence.set(k,data.coreData[k]);n++}catch(e){}});
+      }
       setStatus("Restored "+n+" data entries. Reloading…",true);
       setTimeout(function(){location.reload()},700);
     }catch(e){setStatus("Could not read this backup.")}
