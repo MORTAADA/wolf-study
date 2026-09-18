@@ -1,4 +1,4 @@
-/* WHITE WOLF SCHOLAR — ARCHITECTURE CONTRACT / V63.2
+/* WHITE WOLF SCHOLAR — ARCHITECTURE CONTRACT / V65.26
    Keeps feature modules discoverable without exposing internal state.
 */
 (function(){

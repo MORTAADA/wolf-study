@@ -1,5 +1,5 @@
 
-/* V65.23 UI/UX refinement helpers — non-invasive */
+/* V65.24 UI/UX refinement helpers — non-invasive */
 (() => {
   'use strict';
 

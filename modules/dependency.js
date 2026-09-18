@@ -16,5 +16,5 @@
     container.version='63.2';
     return container;
   }
-  window.WWDI={create:create,version:'63.2'};
+  window.WWDI={create:create,version:'65.26'};
 })();

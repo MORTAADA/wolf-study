@@ -1,4 +1,4 @@
-/* WHITE WOLF SCHOLAR V65.23 — Resource Intelligence */
+/* WHITE WOLF SCHOLAR V65.24 — Resource Intelligence */
 (function(global){'use strict';
   function all(){return global.WWResourceAPI&&global.WWResourceAPI.getAllResources?global.WWResourceAPI.getAllResources():[]}
   function topic(id){return (global.state&&global.state.topics||[]).find(function(t){return t.id===id})||null}
@@ -14,5 +14,5 @@
   function brokenLocal(){return all().filter(function(r){return r.fileKey&&!r.fileName})}
   function searchContent(query,limit){if(!query||!global.WWDocumentIntel||!global.WWDocumentIntel.search)return [];return global.WWDocumentIntel.search(query,{limit:limit||8})}
   function analyze(r){var tid=resourceTopic(r),t=tid&&topic(tid),s=tid&&subject(t&&t.subject_id),di=global.WWDocumentIntel&&global.WWDocumentIntel.get?global.WWDocumentIntel.get(r.id):null;return {score:score(r),topic:t,subject:s,mastery:tid?mastery(tid):null,daysSinceAccess:daysSince(r.lastAccessedAt||r.lastOpenedAt),indexed:!!di,characters:di?Number(di.chars||0):0,chunks:di?Number((di.chunks||[]).length):0}}
-  global.WWResourceIntel={version:'65.21',all:all,topicCoverage:topicCoverage,recommendations:recommendations,usage:usage,brokenLocal:brokenLocal,searchContent:searchContent,analyze:analyze};
+  global.WWResourceIntel={version:'65.24',all:all,topicCoverage:topicCoverage,recommendations:recommendations,usage:usage,brokenLocal:brokenLocal,searchContent:searchContent,analyze:analyze};
 })(window);

@@ -1,6 +1,6 @@
 
 /**
- * White Wolf Scholar V65.23 — Study Performance Engine
+ * White Wolf Scholar V65.24 — Study Performance Engine
  * Integrates study sessions, Pomodoro, mastery snapshots, tasks/quizzes/resources
  * and analytics through a small event-based local layer.
  *
@@ -107,6 +107,13 @@
       return snapshot;
     },
 
+    recordReview(meta = {}) {
+      emit('review_completed', {
+        subjectId:meta.subjectId || null, topicId:meta.topicId || null,
+        success:!!meta.success, source:meta.source || 'review'
+      });
+    },
+
     recordQuiz(meta = {}) {
       emit('quiz_completed', {
         subjectId:meta.subjectId || null,
@@ -122,6 +129,27 @@
         topicId:meta.topicId || null,
         taskId:meta.taskId || null
       });
+    },
+
+    recordCompletedSession(meta = {}) {
+      const v = read();
+      const session = {
+        id: meta.sessionId || crypto.randomUUID?.() || `${now()}-${Math.random()}`,
+        startedAt: meta.startedAt ? new Date(meta.startedAt).getTime() : now(),
+        endedAt: meta.endedAt ? new Date(meta.endedAt).getTime() : now(),
+        plannedMinutes: Number(meta.plannedMinutes || meta.actualMinutes || 0),
+        actualMinutes: Math.max(0, Number(meta.actualMinutes || 0)),
+        subjectId: meta.subjectId || null, topicId: meta.topicId || null,
+        activityType: meta.activityType || 'study', goal: meta.goal || '',
+        pomodoros: Number(meta.pomodoros || 0), tasksCompleted: Number(meta.tasksCompleted || 0),
+        quizScore: meta.quizScore ?? null, masteryBefore: meta.masteryBefore ?? null,
+        masteryAfter: meta.masteryAfter ?? null, notes: meta.notes || ''
+      };
+      v.sessions.push(session);
+      if (v.sessions.length > 2000) v.sessions = v.sessions.slice(-2000);
+      write(v);
+      emit('session_finished', {sessionId:session.id, actualMinutes:session.actualMinutes, subjectId:session.subjectId, topicId:session.topicId});
+      return session;
     },
 
     recordResource(meta = {}) {
