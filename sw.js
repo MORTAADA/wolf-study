@@ -1,13 +1,19 @@
-/* White Wolf Scholar V65.35 — resilient PWA / offline-first service worker */
-const CACHE_NAME = "white-wolf-scholar-v65.35";
+/* White Wolf Scholar V78.0 — resilient PWA / offline-first service worker */
+const CACHE_NAME = "white-wolf-scholar-v79.0.0";
 const APP_SHELL = [
+  './modules/academic-os-v4.js',
+  './modules/academic-event-journal-v77.js',
+  './modules/architecture-final-gate-v78.js',
+  './modules/academic-projection-v68.js',
+  './modules/release-hardening-v79.js',
+  './modules/academic-os-v5.js',
+  './modules/academic-write-bridge.js',
   './modules/academic-entities.js',
   './modules/academic-migrations.js',
   './modules/academic-repositories.js',
   './modules/academic-services.js',
   './modules/architecture-v3.js',
   './modules/architecture-hardening-v65.34.js',
-  './modules/architecture-hardening-v65.35.js',
   './modules/academic-os-bootstrap.js',
   './modules/academic-os-cutover.js',
   './modules/academic-runtime-v65.33.js',
@@ -69,7 +75,7 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
       .then(clients => clients.forEach(client =>
-        client.postMessage({type:"WW_SW_READY", version:"65.35"})
+        client.postMessage({type:"WW_SW_READY", version:"79.0"})
       ))
   );
 });
