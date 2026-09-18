@@ -1,5 +1,5 @@
 /* White Wolf Scholar V79.1 — resilient PWA / offline-first service worker */
-const CACHE_NAME = "white-wolf-scholar-v80.0.0";
+const CACHE_NAME = "white-wolf-scholar-v80.1.0";
 const APP_SHELL = [
   './modules/academic-os-v4.js',
   './modules/academic-event-journal-v77.js',

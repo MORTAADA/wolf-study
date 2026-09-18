@@ -1690,6 +1690,34 @@ function attachAppEvents(){
   document.querySelectorAll('[data-toggle-group]').forEach(function(el){el.onclick=function(){var g=this.dataset.toggleGroup;state.resOpenGroups[g]=!state.resOpenGroups[g];render()}});
   document.querySelectorAll('[data-toggle-fav]').forEach(function(el){el.onclick=function(e){e.stopPropagation();var parts=this.dataset.toggleFav.split('|');var sid=parts[0],rid=parts[1];var folders=wwResourceFolders(sid);Object.keys(folders).forEach(function(fn){var item=(Array.isArray(folders[fn])?folders[fn]:[]).find(function(r){return r.id===rid});if(item){item.favorite=!item.favorite}});saveState();render()}});
   document.querySelectorAll('[data-copy-url]').forEach(function(el){el.onclick=function(e){e.stopPropagation();var url=this.dataset.copyUrl;if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){showToast('📋 Copié !')})}}});
+  document.querySelectorAll('[data-add-task]').forEach(function(el){el.onclick=function(){state.modal={type:'task'};render()}});
+
+  document.querySelectorAll('[data-save-task]').forEach(function(el){el.onclick=async function(){
+    var text=String((document.getElementById('task-text')||{}).value||'').trim();
+    var date=(document.getElementById('task-date')||{}).value||wwLocalDateISO(new Date());
+    var time=(document.getElementById('task-time')||{}).value||'';
+    var deadlineTime=(document.getElementById('task-deadline-time')||{}).value||'';
+    var estimatedMinutes=Math.max(5,Math.min(1440,Number((document.getElementById('task-estimated-min')||{}).value)||30));
+    var priority=(document.getElementById('task-priority')||{}).value||'Moyenne';
+    if(!text){showToast('⚠️ Décris la tâche');return}
+    if(deadlineTime&&time&&wwScheduleToMinutes(deadlineTime)<=wwScheduleToMinutes(time)){showToast('⚠️ L’heure limite doit être après le début');return}
+    var task={id:generateId(),text:text,date:date,time:time,deadlineTime:deadlineTime,estimatedMinutes:estimatedMinutes,priority:priority,isDone:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    state.tasks=Array.isArray(state.tasks)?state.tasks:[];
+    state.tasks.push(task);state.modal=null;
+    await saveState();showToast('✅ Tâche ajoutée');render();
+  }});
+
+  document.querySelectorAll('[data-task-done]').forEach(function(el){el.onclick=async function(){
+    var id=this.dataset.taskDone,t=(state.tasks||[]).find(function(x){return x.id===id});if(!t)return;
+    t.isDone=true;t.completedAt=new Date().toISOString();t.updatedAt=new Date().toISOString();
+    await saveState();render();
+  }});
+
+  document.querySelectorAll('[data-task-delete]').forEach(function(el){el.onclick=async function(){
+    var id=this.dataset.taskDelete;if(!confirm('Supprimer cette tâche ?'))return;
+    state.tasks=(state.tasks||[]).filter(function(x){return x.id!==id});await saveState();render();
+  }});
+
   document.querySelectorAll('[data-add-folder]').forEach(function(el){el.onclick=function(){state.modal={type:'folder'};render()}});
   document.querySelectorAll('[data-save-folder]').forEach(function(el){el.onclick=function(){var sid=document.getElementById('folder-subject').value;var fn=document.getElementById('folder-name').value;if(!sid||!fn){alert('Remplir');return}var folders=wwResourceFolders(sid);if(folders[fn]){alert('Existe');return}folders[fn]=[];state.modal=null;showToast('✅ Créé');saveState();render()}});
   document.querySelectorAll('[data-add-resource]').forEach(function(el){el.onclick=function(){state.modal={type:'resource'};render()}});
