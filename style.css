@@ -1631,7 +1631,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 /* V65.9 — Tutor Session Dashboard & Replay */
 
 
-/* V65.23 — Resource Intelligence */
+/* V65.24 — Resource Intelligence */
 .ww-resource-intel{margin:12px 0 14px;padding:14px;border:1px solid rgba(143,179,230,.18);background:linear-gradient(135deg,rgba(20,34,50,.92),rgba(10,18,27,.92))}
 .ww-resource-intel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.ww-resource-intel-sub{font-size:11px;color:#8194ac;margin-top:4px}.ww-resource-intel-badge{font-size:10px;padding:5px 8px;border:1px solid rgba(143,179,230,.22);border-radius:999px;color:#9bb8dd}
 .ww-resource-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.ww-resource-kpis>div{padding:10px;border-radius:12px;background:rgba(7,18,30,.65);border:1px solid rgba(143,179,230,.1)}.ww-resource-kpis b{display:block;font-size:20px;color:#e8eef7}.ww-resource-kpis span,.ww-resource-kpis small{display:block;font-size:10px;color:#8ca0b8;margin-top:2px}
@@ -1642,7 +1642,7 @@ body.ww-search-lock{overflow:hidden!important}.ww-global-search-trigger{font-siz
 
 
 /* =========================
-   V65.23 UI/UX Refinement
+   V65.24 UI/UX Refinement
    ========================= */
 
 /* Clearer interaction affordances */
@@ -1764,7 +1764,7 @@ nav.fixed, .bottom-nav, .mobile-nav, [class*="bottom-nav"] {
 
 
 
-/* V65.23 Study Performance UI */
+/* V65.24 Study Performance UI */
 .wws-performance-panel{display:grid;gap:12px;margin:16px 0}
 .wws-performance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .wws-performance-card{padding:14px;border-radius:14px;border:1px solid currentColor;opacity:.96}
@@ -1774,3 +1774,28 @@ nav.fixed, .bottom-nav, .mobile-nav, [class*="bottom-nav"] {
 @media(max-width:700px){.wws-performance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.wws-performance-panel *{scroll-behavior:auto}}
 
+
+/* V65.24 Planning Intelligence + PWA */
+.ww-planning-intelligence{margin:14px 0;padding:16px}
+.ww-pi-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.ww-pi-head>strong{font-size:1.35rem}
+.ww-pi-sub{font-size:.82rem;opacity:.7;margin-top:3px}
+.ww-pi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.ww-pi-grid>div{padding:11px;border-radius:12px;border:1px solid currentColor;display:grid;gap:4px}
+.ww-pi-grid span{font-size:.78rem;opacity:.7}
+.ww-pi-grid b{font-size:1.1rem}
+.ww-pi-section{margin-top:14px}
+.ww-pi-title{font-weight:700;margin-bottom:8px}
+.ww-pi-mission,.ww-pi-week-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)}
+.ww-pi-mission small,.ww-pi-week-row span{margin-left:auto;opacity:.7}
+.ww-pi-mission.done{opacity:.6;text-decoration:line-through}
+.ww-pi-free{display:flex;gap:8px;flex-wrap:wrap}
+.ww-pi-free span{padding:7px 9px;border-radius:9px;border:1px solid currentColor;font-size:.84rem}
+.ww-pi-empty{opacity:.7;font-size:.9rem}
+.ww-network-badge{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:9999;padding:8px 12px;border-radius:999px;border:1px solid currentColor;background:rgba(10,14,20,.95);font-size:.8rem;backdrop-filter:blur(8px)}
+@media(max-width:700px){
+  .ww-pi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ww-pi-mission,.ww-pi-week-row{align-items:flex-start}
+  .ww-pi-mission small{white-space:nowrap}
+}
+@media(prefers-reduced-motion:reduce){.ww-network-badge{transition:none}}

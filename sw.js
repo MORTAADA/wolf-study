@@ -1,56 +1,122 @@
-/* White Wolf Scholar — V65.23 Integration & Reliability Cache */
-const CACHE_NAME = "white-wolf-scholar-v65.23";
+/* White Wolf Scholar V65.35 — resilient PWA / offline-first service worker */
+const CACHE_NAME = "white-wolf-scholar-v65.35";
 const APP_SHELL = [
+  './modules/academic-entities.js',
+  './modules/academic-migrations.js',
+  './modules/academic-repositories.js',
+  './modules/academic-services.js',
+  './modules/architecture-v3.js',
+  './modules/architecture-hardening-v65.34.js',
+  './modules/architecture-hardening-v65.35.js',
+  './modules/academic-os-bootstrap.js',
+  './modules/academic-os-cutover.js',
+  './modules/academic-runtime-v65.33.js',
+  './modules/feature-migration-v65.31.js',
+  './modules/legacy-api-retirement-v65.32.js',
+  './modules/academic-os-integration.js',
+  './modules/academic-os-cross-feature.js',
   "./",
   "./index.html",
-  "./style.css?v=65.21",
-  "./script.js?v=65.21",
-  "./mountain-bg.jpg",
-  "./logo.svg",
-  "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./modules/core-persistence.js?v=65.21",
-  "./modules/state.js?v=65.21",
-  "./modules/router.js?v=65.21",
-  "./modules/icons.js?v=65.21",
-  "./modules/event-bus.js?v=65.21",
-  "./modules/renderer.js?v=65.21",
-  "./modules/feature-controllers.js?v=65.21",
-  "./modules/pdf-reader.js?v=65.21",
-  "./modules/ocr-reader.js?v=65.21",
-  "./modules/reader.js?v=65.21",
-  "./modules/resource-adapter.js?v=65.21",
-  "./modules/pwa.js?v=65.21",
-  "./modules/backup.js?v=65.21",
-  "./modules/global-search.js?v=65.21",
-  "./modules/services.js?v=65.21",
-  "./modules/dependency.js?v=65.21",
-  "./modules/architecture.js?v=65.21",
-  "./modules/document-intelligence.js?v=65.21",
-  "./modules/document-map.js?v=65.21",
-  "./modules/mastery-engine.js?v=65.21",
-  "./modules/adaptive-revision.js?v=65.21",
-  "./modules/adaptive-quiz.js?v=65.21",
-  "./modules/analytics-engine.js?v=65.21",
-  "./modules/qa.js?v=65.21"
+  "./logo.svg",
+  "./manifest.webmanifest",
+  "./modules/adaptive-quiz.js",
+  "./modules/adaptive-revision.js",
+  "./modules/analytics-engine.js",
+  "./modules/architecture.js",
+  "./modules/backup.js",
+  "./modules/core-persistence.js",
+  "./modules/dependency.js",
+  "./modules/document-intelligence.js",
+  "./modules/document-map.js",
+  "./modules/event-bus.js",
+  "./modules/feature-controllers.js",
+  "./modules/global-search.js",
+  "./modules/icons.js",
+  "./modules/mastery-engine.js",
+  "./modules/ocr-reader.js",
+  "./modules/pdf-reader.js",
+  "./modules/pwa.js",
+  "./modules/qa.js",
+  "./modules/reader.js",
+  "./modules/renderer.js",
+  "./modules/resource-adapter.js",
+  "./modules/resource-intelligence.js",
+  "./modules/router.js",
+  "./modules/services.js",
+  "./modules/state.js",
+  "./modules/study-performance-engine.js",
+  "./modules/study-performance-ui.js",
+  "./modules/ui-ux-refinement.js",
+  "./mountain-bg.jpg",
+  "./script.js",
+  "./style.css"
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
+
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
-    .then(() => self.clients.claim())
-    .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
-    .then(clients => clients.forEach(client => client.postMessage({type:"WW_SW_READY", version:"65.21"}))));
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
+      .then(clients => clients.forEach(client =>
+        client.postMessage({type:"WW_SW_READY", version:"65.35"})
+      ))
+  );
 });
-function isAppAsset(url, req) {
-  return req.method === "GET" && (url.pathname.endsWith("/index.html") || url.pathname.endsWith("/script.js") || url.pathname.endsWith("/style.css") || url.pathname.includes("/modules/") || url.pathname.endsWith("/manifest.webmanifest") || url.pathname.endsWith("/logo.svg") || url.pathname.includes("/icons/") || url.pathname.endsWith("/mountain-bg.jpg"));
+
+function sameOrigin(request) {
+  return new URL(request.url).origin === self.location.origin;
 }
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const hit = await cache.match(request, {ignoreSearch:true});
+  if (hit) return hit;
+  try {
+    const response = await fetch(request);
+    if (response && response.ok && sameOrigin(request)) {
+      cache.put(request, response.clone()).catch(()=>{});
+    }
+    return response;
+  } catch (_) {
+    return new Response("Offline", {status:503, headers:{"Content-Type":"text/plain; charset=utf-8"}});
+  }
+}
+
+async function navigation(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match("./index.html", {ignoreSearch:true});
+  try {
+    const response = await fetch(request, {cache:"no-store"});
+    if (response && response.ok) {
+      cache.put("./index.html", response.clone()).catch(()=>{});
+      return response;
+    }
+  } catch (_) {}
+  return cached || new Response(
+    "<!doctype html><meta charset='utf-8'><title>White Wolf — Offline</title><body style='font-family:system-ui;padding:24px;background:#0a0e14;color:#dce8f7'><h1>🐺 White Wolf Scholar</h1><p>Mode hors connexion. Recharge l’application quand le cache est disponible.</p></body>",
+    {status:200, headers:{"Content-Type":"text/html; charset=utf-8"}}
+  );
+}
+
 self.addEventListener("fetch", event => {
-  const req=event.request; if(req.method!=="GET") return; const url=new URL(req.url);
-  if(req.mode==="navigate"){event.respondWith((async()=>{const cache=await caches.open(CACHE_NAME);const cached=await cache.match(req)||await cache.match("./index.html");const net=fetch(req,{cache:"no-store"}).then(r=>{if(r&&r.ok)cache.put("./index.html",r.clone()).catch(()=>{});return r}).catch(()=>null);if(cached){event.waitUntil(net.catch(()=>{}));return cached}return (await net)||Response.error()})());return;}
-  if(isAppAsset(url,req)||url.pathname.endsWith("/sw.js")){event.respondWith((async()=>{const cached=await caches.match(req);if(cached)return cached;try{const r=await fetch(req);if(r&&r.ok&&!url.pathname.endsWith("/sw.js"))caches.open(CACHE_NAME).then(c=>c.put(req,r.clone())).catch(()=>{});return r}catch(e){return Response.error()}})());return;}
-  event.respondWith((async()=>{const cached=await caches.match(req);if(cached)return cached;try{const r=await fetch(req);if(r&&r.ok)caches.open(CACHE_NAME).then(c=>c.put(req,r.clone())).catch(()=>{});return r}catch(e){return Response.error()}})());
+  const request = event.request;
+  if (request.method !== "GET") return;
+  if (request.mode === "navigate") {
+    event.respondWith(navigation(request));
+    return;
+  }
+  if (sameOrigin(request)) {
+    event.respondWith(cacheFirst(request));
+  }
 });
