@@ -1799,3 +1799,7 @@ nav.fixed, .bottom-nav, .mobile-nav, [class*="bottom-nav"] {
   .ww-pi-mission small{white-space:nowrap}
 }
 @media(prefers-reduced-motion:reduce){.ww-network-badge{transition:none}}
+
+/* V80 Task ↔ Planning Intelligence */
+.ww-pi-mission.conflict{border-color:#7a3d3d;background:#24161a}
+.ww-pi-mission small{display:block}
