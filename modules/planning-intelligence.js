@@ -49,6 +49,36 @@
     return (h>>>0).toString(36);
   }
 
+  function taskMinutes(t){
+    const n=Number(t&&t.estimatedMinutes);
+    if(n>0) return Math.min(1440,n);
+    if(t&&t.time&&t.deadlineTime){
+      const a=toMin(t.time),b=toMin(t.deadlineTime);
+      if(b>a) return b-a;
+    }
+    return 30;
+  }
+
+  function todayTasks(){
+    const s=state();
+    if(!s) return [];
+    return (s.tasks||[]).filter(t=>t.date===todayISO()&&!t.isDone);
+  }
+
+  function taskAssessment(){
+    const tasks=todayTasks();
+    const free=freeWindows();
+    const totalFree=free.reduce((n,x)=>n+x[1]-x[0],0);
+    const totalTaskMinutes=tasks.reduce((n,t)=>n+taskMinutes(t),0);
+    return tasks.map(t=>{
+      const mins=taskMinutes(t);
+      const deadline=t.deadlineTime?toMin(t.deadlineTime):null;
+      const availableBefore=deadline===null?totalFree:free.reduce((n,x)=>n+Math.max(0,Math.min(x[1],deadline)-x[0]),0);
+      const feasible=availableBefore>=mins;
+      return {task:t,minutes:mins,deadline,availableBefore,feasible};
+    });
+  }
+
   function todayMission(){
     const raw=planning()[todayKey()]||'';
     const done=doneMap();
@@ -82,7 +112,6 @@
   function freeWindows(){
     const classes=scheduleForToday();
     const busy=classes.map(x=>[toMin(x.start),toMin(x.end)]).filter(x=>x[0]<x[1]);
-    // Day study windows used for guidance only; they never modify Planning.
     const windows=[[7*60,12*60],[13*60,19*60],[20*60,23*60]];
     const out=[];
     windows.forEach(w=>{
@@ -118,7 +147,9 @@
       percent:m.length?Math.round(done/m.length*100):0,
       plannedMinutes:mins,completedMinutes:doneMins,
       freeMinutes:freeWindows().reduce((n,x)=>n+x[1]-x[0],0),
-      tasks:tasksToday().length,
+      tasks:todayTasks().length,
+      taskMinutes:todayTasks().reduce((n,t)=>n+taskMinutes(t),0),
+      taskAssessment:taskAssessment(),
       classes:scheduleForToday()
     };
   }
@@ -159,6 +190,7 @@
         <div><span>🕐 Temps libre estimé</span><b>${s.freeMinutes} min</b></div>
       </div>
       <div class="ww-pi-section"><div class="ww-pi-title">🎯 Mission structurée</div>${missionRows}</div>
+      <div class="ww-pi-section"><div class="ww-pi-title">📝 Tâches intégrées à la journée</div>${(s.taskAssessment.length?s.taskAssessment.map(x=>`<div class="ww-pi-mission ${x.feasible?'':'conflict'}"><span>${x.feasible?'🟡':'⚠️'}</span><b>${String(x.task.text).replace(/</g,'&lt;')}</b><small>${x.minutes} min${x.deadline!==null?' · limite '+fmt(x.deadline):' · sans heure limite'}${x.feasible?'':' · créneau insuffisant avant la limite'}</small></div>`).join(''):'<div class="ww-pi-empty">Aucune tâche ouverte pour aujourd’hui.</div>')}</div>
       <div class="ww-pi-section"><div class="ww-pi-title">🕐 Créneaux libres indicatifs</div><div class="ww-pi-free">${freeRows}</div></div>
       <div class="ww-pi-section"><div class="ww-pi-title">📅 Charge hebdomadaire</div>${weekRows}</div>
     `;
