@@ -1,11 +1,11 @@
-/* White Wolf Scholar V79.1 — resilient PWA / offline-first service worker */
-const CACHE_NAME = "white-wolf-scholar-v80.1.0";
+/* White Wolf Scholar V80.6 — resilient PWA / offline-first service worker + push receiver */
+const CACHE_NAME = "white-wolf-scholar-v80.6.0";
 const APP_SHELL = [
   './modules/academic-os-v4.js',
   './modules/academic-event-journal-v77.js',
   './modules/architecture-final-gate-v78.js',
+  './modules/notification-system-v80.4.js',
   './modules/academic-projection-v68.js',
-  './modules/release-hardening-v80.js',
   './modules/academic-os-v5.js',
   './modules/academic-write-bridge.js',
   './modules/academic-entities.js',
@@ -75,7 +75,7 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
       .then(clients => clients.forEach(client =>
-        client.postMessage({type:"WW_SW_READY", version:"79.1"})
+        client.postMessage({type:"WW_SW_READY", version:"80.6"})
       ))
   );
 });
@@ -114,6 +114,19 @@ async function navigation(request) {
     {status:200, headers:{"Content-Type":"text/html; charset=utf-8"}}
   );
 }
+
+self.addEventListener("push", event => {
+  var data={}; try{data=event.data?event.data.json():{}}catch(_){data={title:event.data?event.data.text():"White Wolf Scholar",body:"Nouvelle notification"}}
+  var title=data.title||"🐺 White Wolf Scholar";
+  var options={body:data.body||"",icon:data.icon||"./icons/icon-192.png",badge:data.badge||"./icons/icon-192.png",tag:data.tag||"ww-push",data:data.data||{}};
+  if(data.requireInteraction!==undefined)options.requireInteraction=!!data.requireInteraction;
+  event.waitUntil(self.registration.showNotification(title,options));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  var target=(event.notification.data&&event.notification.data.url)||"./";
+  event.waitUntil(self.clients.matchAll({type:"window",includeUncontrolled:true}).then(clients=>{for(var i=0;i<clients.length;i++){if("focus" in clients[i]){clients[i].focus();clients[i].postMessage({type:"WW_NOTIFICATION_CLICK",data:event.notification.data||{}});return clients[i]}}if(self.clients.openWindow)return self.clients.openWindow(target)}));
+});
 
 self.addEventListener("fetch", event => {
   const request = event.request;
