@@ -1,5 +1,5 @@
 /* White Wolf Scholar V80.6 — resilient PWA / offline-first service worker + push receiver */
-const CACHE_NAME = "white-wolf-scholar-v80.6.0";
+const CACHE_NAME = "white-wolf-scholar-v80.8.0";
 const APP_SHELL = [
   './modules/academic-os-v4.js',
   './modules/academic-event-journal-v77.js',
@@ -75,7 +75,7 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
       .then(clients => clients.forEach(client =>
-        client.postMessage({type:"WW_SW_READY", version:"80.6"})
+        client.postMessage({type:"WW_SW_READY", version:"80.8"})
       ))
   );
 });
