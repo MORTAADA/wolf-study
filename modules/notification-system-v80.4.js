@@ -41,6 +41,30 @@ function notifyNow(title,body,category){return show({id:'manual_'+Date.now(),cat
 function updateSettings(p){var s=load();p=p||{};if(p.categories)s.categories=Object.assign({},s.categories,p.categories);if(p.timings)s.timings=Object.assign({},s.timings,p.timings);if(p.quietHours)s.quietHours=Object.assign({},s.quietHours,p.quietHours);if(p.push)s.push=Object.assign({},s.push,p.push);if(typeof p.enabled==='boolean')s.enabled=p.enabled;save(s);return s}
 function configurePush(cfg){var s=load();s.push=Object.assign({},s.push,cfg||{});save(s);return s.push}
 function pushStatus(){var s=load();return {enabled:!!s.push.enabled,configured:!!(s.push.endpoint&&s.push.vapidPublicKey),endpoint:s.push.endpoint||'',permission:('Notification' in window?Notification.permission:'unsupported'),supported:!!(navigator.serviceWorker&&window.PushManager)}}
-async function subscribePush(){var s=load();if(!s.push.enabled||!s.push.endpoint||!s.push.vapidPublicKey)return {ok:false,reason:'push_gateway_not_configured'};if(!navigator.serviceWorker||!window.PushManager)return {ok:false,reason:'push_unsupported'};var reg=await navigator.serviceWorker.ready;var raw=s.push.vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');while(raw.length%4)raw+='=';var key=Uint8Array.from(atob(raw),function(c){return c.charCodeAt(0)});var sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});var res=await fetch(s.push.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sub)});return {ok:res.ok,status:res.status,subscription:sub.toJSON?sub.toJSON():sub}}
-window.WWNotifications={version:'80.7',defaults:clone(DEFAULTS),settings:load,updateSettings:updateSettings,requestPermission:permission,build:build,tick:tick,show:show,notifyNow:notifyNow,configurePush:configurePush,pushStatus:pushStatus,subscribePush:subscribePush};
+async function configureFromGateway(gateway){
+  gateway=String(gateway||'').replace(/\/$/,'');
+  if(!gateway)return {ok:false,reason:'gateway_missing'};
+  var res=await fetch(gateway+'/config',{cache:'no-store'});
+  if(!res.ok)return {ok:false,reason:'gateway_config_http_'+res.status};
+  var cfg=await res.json();
+  if(!cfg||!cfg.vapidPublicKey)return {ok:false,reason:'gateway_public_key_missing'};
+  var push=configurePush({enabled:true,endpoint:gateway+'/subscribe',vapidPublicKey:cfg.vapidPublicKey,gateway:gateway});
+  return {ok:true,push:push};
+}
+async function subscribePush(){
+  var s=load();
+  if(!s.push.enabled||!s.push.endpoint||!s.push.vapidPublicKey)return {ok:false,reason:'push_gateway_not_configured'};
+  if(!navigator.serviceWorker||!window.PushManager)return {ok:false,reason:'push_unsupported'};
+  var permissionResult=await permission();
+  if(permissionResult!=='granted')return {ok:false,reason:'permission_'+permissionResult};
+  var reg=await navigator.serviceWorker.ready;
+  var raw=s.push.vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
+  while(raw.length%4)raw+='=';
+  var key=Uint8Array.from(atob(raw),function(c){return c.charCodeAt(0)});
+  var sub=await reg.pushManager.getSubscription();
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
+  var res=await fetch(s.push.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sub)});
+  return {ok:res.ok,status:res.status,subscription:sub.toJSON?sub.toJSON():sub};
+}
+window.WWNotifications={version:'80.8',defaults:clone(DEFAULTS),settings:load,updateSettings:updateSettings,requestPermission:permission,build:build,tick:tick,show:show,notifyNow:notifyNow,configurePush:configurePush,configureFromGateway:configureFromGateway,pushStatus:pushStatus,subscribePush:subscribePush};
 })();
