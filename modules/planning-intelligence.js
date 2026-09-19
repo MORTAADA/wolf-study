@@ -1,72 +1,29 @@
-/**
- * White Wolf Scholar V80.1 — Task ↔ Planning Intelligence
- * Planning Hebdo remains the source of truth. Tasks are inputs, not silent edits.
+/* White Wolf Scholar V80.3 — Planning Intelligence
+ * Tasks are planning inputs. Planning Hebdo remains the source of truth.
  */
-(() => {
-  'use strict';
-  const DAY_KEYS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-  const DAY_LABELS={lundi:'Lundi',mardi:'Mardi',mercredi:'Mercredi',jeudi:'Jeudi',vendredi:'Vendredi',samedi:'Samedi',dimanche:'Dimanche'};
-  const app=()=>window.WWAppCore&&window.WWAppCore.state;
-  const iso=d=>window.wwLocalDateISO?window.wwLocalDateISO(d||new Date()):new Date((d||new Date()).getTime()-(d||new Date()).getTimezoneOffset()*60000).toISOString().slice(0,10);
-  const dayKey=()=>DAY_KEYS[new Date().getDay()];
-  const min=v=>{const p=String(v||'').split(':').map(Number);return Number.isFinite(p[0])?p[0]*60+(p[1]||0):0};
-  const fmt=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(Math.round(n%60)).padStart(2,'0');
-  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function planning(){const s=app();return Object.assign({},window.DEFAULT_SCHEDULE||{},s&&s.customSchedule||{});}
-  function split(v){return String(v||'').split(/\s*(?:\+|•|;|\n)\s*/).map(x=>x.trim()).filter(Boolean);}
-  function estimate(v){const t=String(v||'').toLowerCase();if(/repos|pause|gym|sport|🏋️|🛌/.test(t))return 0;if(/python|programm|git|code|oop|dsa/.test(t))return 60;if(/révision|revision|exercices|td|tp|quiz/.test(t))return 60;if(/spectro|chimie|analyse|chromato|génie|energie|énerg/.test(t))return 50;return 45;}
-  function taskMinutes(t){const n=Number(t&&t.estimatedMinutes);if(n>0)return Math.min(1440,n);if(t&&t.time&&t.deadlineTime&&min(t.deadlineTime)>min(t.time))return min(t.deadlineTime)-min(t.time);return 30;}
-  function todayTasks(){const s=app();return (s&&Array.isArray(s.tasks)?s.tasks:[]).filter(t=>t&&t.date===iso()&&!t.isDone);}
-  function schedule(){const list=Array.isArray(window.COURSE_SCHEDULE)?window.COURSE_SCHEDULE:[];return list.filter(x=>x.day===dayKey()).map(x=>[min(x.start),min(x.end)]).filter(x=>x[1]>x[0]).sort((a,b)=>a[0]-b[0]);}
-  function freeWindows(){
-    const busy=schedule(),out=[],base=[[7*60,12*60],[13*60,19*60],[20*60,23*60]];
-    base.forEach(w=>{let c=w[0];busy.forEach(b=>{if(b[1]<=c||b[0]>=w[1])return;if(b[0]>c)out.push([c,Math.min(b[0],w[1])]);c=Math.max(c,b[1]);});if(c<w[1])out.push([c,w[1]]);});
-    return out.filter(x=>x[1]-x[0]>=25);
+(function(){'use strict';
+  var DAYS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var LABELS={lundi:'Lundi',mardi:'Mardi',mercredi:'Mercredi',jeudi:'Jeudi',vendredi:'Vendredi',samedi:'Samedi',dimanche:'Dimanche'};
+  function S(){return window.WWAppCore&&window.WWAppCore.state||window.state||null}
+  function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  function day(){return DAYS[new Date().getDay()]}
+  function mins(v){var p=String(v||'').split(':').map(Number);return Number.isFinite(p[0])?p[0]*60+(p[1]||0):null}
+  function fmt(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(Math.round(n%60)).padStart(2,'0')}
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function plan(){var s=S()||{};return Object.assign({},window.DEFAULT_SCHEDULE||{},s.customSchedule||{})}
+  function split(v){return String(v||'').split(/\s*(?:\+|•|;|\n)\s*/).map(function(x){return x.trim()}).filter(Boolean)}
+  function estimate(x){x=String(x||'').toLowerCase();if(/repos|pause|gym|sport|🛌/.test(x))return 0;if(/python|programm|git|code|oop|dsa/.test(x))return 60;if(/révision|revision|exercices|td|tp|quiz/.test(x))return 60;if(/spectro|chimie|analyse|chromato|génie|energie|énerg/.test(x))return 50;return 45}
+  function taskMinutes(t){var n=Number(t&&t.estimatedMinutes);return n>0?Math.min(1440,n):30}
+  function planningItems(){return split(plan()[day()]).filter(function(x){return !/^repos$/i.test(x)})}
+  function tasks(){var s=S()||{};return (Array.isArray(s.tasks)?s.tasks:[]).filter(function(t){return t&&t.date===today()&&!t.isDone})}
+  function classBusy(){var a=Array.isArray(window.COURSE_SCHEDULE)?window.COURSE_SCHEDULE:[],d=day();return a.filter(function(c){return c.day===d}).map(function(c){return [mins(c.start),mins(c.end)]}).filter(function(x){return x[0]!=null&&x[1]>x[0]}).sort(function(a,b){return a[0]-b[0]})}
+  function free(){var busy=classBusy(),base=[[7*60,12*60],[13*60,19*60],[20*60,23*60]],out=[];base.forEach(function(w){var c=w[0];busy.forEach(function(b){if(b[1]<=c||b[0]>=w[1])return;if(b[0]>c)out.push([c,Math.min(b[0],w[1])]);c=Math.max(c,b[1])});if(c<w[1])out.push([c,w[1]])});return out.filter(function(x){return x[1]-x[0]>=25})}
+  function assess(){var cap=free().map(function(x){return x.slice()});return tasks().sort(function(a,b){var p={Haute:0,Moyenne:1,Basse:2};return (p[a.priority]??1)-(p[b.priority]??1)}).map(function(t){var need=taskMinutes(t),left=need,deadline=mins(t.deadlineTime),alloc=[];for(var i=0;i<cap.length&&left>0;i++){var end=deadline==null?cap[i][1]:Math.min(cap[i][1],deadline);if(end<=cap[i][0])continue;var take=Math.min(left,end-cap[i][0]);if(take>0){alloc.push([cap[i][0],cap[i][0]+take]);cap[i][0]+=take;left-=take}}return{task:t,minutes:need,deadline:deadline,feasible:left<=0,allocated:alloc,remaining:left}})}
+  function html(){var a=assess(), pi=planningItems(), fr=free(), pmins=pi.reduce(function(n,x){return n+estimate(x)},0), tmins=a.reduce(function(n,x){return n+x.minutes},0), conflicts=a.filter(function(x){return !x.feasible}).length;
+    var planRows=pi.map(function(x){return '<div class="ww-pi-row"><span>📋</span><div><b>'+esc(x)+'</b><small>جزء من Planning Hebdo · ~'+estimate(x)+' min</small></div></div>'}).join('')||'<div class="ww-pi-empty">لا توجد مهمة أكاديمية مخططة اليوم.</div>';
+    var taskRows=a.map(function(x){return '<div class="ww-pi-row '+(x.feasible?'':'conflict')+'"><span>'+(x.feasible?'📝':'⚠️')+'</span><div><b>'+esc(x.task.text)+'</b><small>'+x.minutes+' min'+(x.deadline!=null?' · deadline '+fmt(x.deadline):' · بدون deadline')+(x.feasible?' · يمكن استيعابها في الوقت المتاح':' · الوقت المتاح قبل deadline غير كافٍ')+'</small></div></div>'}).join('')||'<div class="ww-pi-empty">لا توجد مهام مفتوحة اليوم.</div>';
+    var freeRows=fr.slice(0,6).map(function(x){return '<span>'+fmt(x[0])+'–'+fmt(x[1])+'</span>'}).join('')||'<span>لا يوجد créneau libre ≥ 25 min</span>';
+    return '<section class="ww-planning-intelligence card"><div class="ww-pi-head"><div><div class="card-title">🧠 Planning Intelligence</div><div class="ww-pi-sub">Planning Hebdo = Source of Truth · les tâches sont des contraintes analysées, jamais des modifications silencieuses.</div></div><strong>'+(conflicts?'⚠️ '+conflicts+' conflit'+(conflicts>1?'s':''):'✓ OK')+'</strong></div><div class="ww-pi-grid"><div><span>📋 Planning</span><b>~'+pmins+' min</b></div><div><span>📝 Tâches</span><b>~'+tmins+' min</b></div><div><span>🕐 Temps libre</span><b>~'+fr.reduce(function(n,x){return n+x[1]-x[0]},0)+' min</b></div><div><span>🎯 Entrées</span><b>'+a.length+'</b></div></div><div class="ww-pi-section"><div class="ww-pi-title">🎯 Mission issue du Planning</div>'+planRows+'</div><div class="ww-pi-section"><div class="ww-pi-title">📝 Tâches intégrées à l’analyse</div>'+taskRows+'</div><div class="ww-pi-section"><div class="ww-pi-title">🕐 Créneaux disponibles</div><div class="ww-pi-free">'+freeRows+'</div></div>'+(conflicts?'<div class="ww-pi-conflict">⚠️ <b>Planning Conflict</b> — une ou plusieurs tâches ne tiennent pas dans les créneaux disponibles avant leur deadline. White Wolf ne déplace pas automatiquement ton Planning.</div>':'<div class="ww-pi-ok">✓ Les tâches ouvertes ont été prises en compte dans l’analyse de la journée.</div>')+'</section>';
   }
-  function assessTasks(){
-    const capacity=freeWindows().map(x=>x.slice());
-    return todayTasks().sort((a,b)=>({Haute:0,Moyenne:1,Basse:2}[a.priority]??1)-({Haute:0,Moyenne:1,Basse:2}[b.priority]??1)).map(t=>{
-      const mins=taskMinutes(t),deadline=t.deadlineTime?min(t.deadlineTime):null;
-      let remaining=mins,available=0,allocated=[];
-      for(let i=0;i<capacity.length&&remaining>0;i++){
-        const end=deadline==null?capacity[i][1]:Math.min(capacity[i][1],deadline);
-        if(end<=capacity[i][0])continue;
-        available+=end-capacity[i][0];
-        const take=Math.min(remaining,end-capacity[i][0]);
-        if(take>0){allocated.push([capacity[i][0],capacity[i][0]+take]);capacity[i][0]+=take;remaining-=take;}
-      }
-      if(remaining>0&&deadline!=null)for(let i=0;i<capacity.length;i++){const end=Math.min(capacity[i][1],deadline);if(end>capacity[i][0])available+=end-capacity[i][0];}
-      return {task:t,minutes:mins,deadline,availableBefore:available,feasible:remaining<=0,allocated};
-    });
-  }
-  function mission(){
-    let done={};try{done=JSON.parse(localStorage.getItem('wwDailyMissionDone')||'{}')||{};}catch(e){}
-    return split(planning()[dayKey()]||'').filter(x=>!/^repos$/i.test(x)).map((text,i)=>{
-      let h=2166136261,k=iso()+'|'+i+'|'+text;for(let j=0;j<k.length;j++){h^=k.charCodeAt(j);h=Math.imul(h,16777619);}
-      const id=(h>>>0).toString(36);return{id,text,minutes:estimate(text),done:!!done[id]};
-    });
-  }
-  function week(){const p=planning();return Object.keys(DAY_LABELS).map(k=>{const a=split(p[k]||'').filter(x=>!/repos|🛌/i.test(x));return{key:k,label:DAY_LABELS[k],items:a.length,minutes:a.reduce((n,x)=>n+estimate(x),0)};});}
-  function summary(){const m=mission(),t=todayTasks(),a=assessTasks(),f=freeWindows();return{date:iso(),day:dayKey(),total:m.length,done:m.filter(x=>x.done).length,plannedMinutes:m.reduce((n,x)=>n+x.minutes,0),freeMinutes:f.reduce((n,x)=>n+x[1]-x[0],0),tasks:t.length,taskMinutes:t.reduce((n,x)=>n+taskMinutes(x),0),taskAssessment:a,classes:schedule()};}
-  function render(){
-    const s=app();if(!s||!s.onboardingDone||s.route!=='planning')return;
-    const root=document.getElementById('root'),host=root&&root.querySelector('.app');if(!host)return;
-    const old=host.querySelector('#ww-planning-intelligence');if(old)old.remove();
-    const x=summary(),m=mission(),w=week(),f=freeWindows();
-    const tasks=x.taskAssessment.map(a=>`<div class="ww-pi-mission ${a.feasible?'':'conflict'}"><span>${a.feasible?'🟡':'⚠️'}</span><b>${esc(a.task.text)}</b><small>${a.minutes} min${a.deadline!==null?' · limite '+fmt(a.deadline):' · sans limite horaire'} · ${a.feasible?'capacité indicative disponible':'temps insuffisant avant la limite'}</small></div>`).join('')||'<div class="ww-pi-empty">Aucune tâche ouverte aujourd’hui.</div>';
-    const missionRows=m.map(q=>`<div class="ww-pi-mission ${q.done?'done':''}"><span>${q.done?'✓':'○'}</span><b>${esc(q.text)}</b><small>${q.minutes?q.minutes+' min':''}</small></div>`).join('')||'<div class="ww-pi-empty">Aucune mission académique aujourd’hui.</div>';
-    const freeRows=f.slice(0,5).map(q=>`<span>${fmt(q[0])}–${fmt(q[1])}</span>`).join('')||'<span>Aucun créneau libre ≥ 25 min détecté</span>';
-    const weekRows=w.map(q=>`<div class="ww-pi-week-row"><b>${q.label}</b><span>${q.items} éléments · ~${q.minutes} min</span></div>`).join('');
-    const panel=document.createElement('section');panel.id='ww-planning-intelligence';panel.className='ww-planning-intelligence card';
-    panel.innerHTML=`<div class="ww-pi-head"><div><div class="card-title">🧠 Planning Intelligence</div><div class="ww-pi-sub">Planning Hebdo = source de vérité. Les tâches sont analysées sans modifier le planning.</div></div><strong>${x.total?Math.round(x.done/x.total*100):0}%</strong></div>
-    <div class="ww-pi-grid"><div><span>🎯 Mission</span><b>${x.done}/${x.total}</b></div><div><span>⏱️ Charge planning</span><b>${x.plannedMinutes} min</b></div><div><span>📝 Tâches ouvertes</span><b>${x.tasks}</b></div><div><span>🕐 Libre indicatif</span><b>${x.freeMinutes} min</b></div></div>
-    <div class="ww-pi-section"><div class="ww-pi-title">🎯 Mission structurée</div>${missionRows}</div>
-    <div class="ww-pi-section"><div class="ww-pi-title">📝 Tâches prises en compte</div>${tasks}</div>
-    <div class="ww-pi-section"><div class="ww-pi-title">🕐 Créneaux libres indicatifs</div><div class="ww-pi-free">${freeRows}</div></div>
-    <div class="ww-pi-section"><div class="ww-pi-title">📅 Charge hebdomadaire</div>${weekRows}</div>`;
-    const content=host.querySelector('.bottom-nav')?.previousElementSibling;if(content)content.prepend(panel);else host.prepend(panel);
-  }
-  window.WWPlanningIntelligence={today:mission,summary,week,freeWindows,taskAssessment:assessTasks,render};
-  if(window.WWEventBus&&WWEventBus.on)WWEventBus.on('render:complete',render);
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(render,0));
+  window.WWPlanningIntelligence={renderHTML:html,summary:function(){return{planningItems:planningItems(),tasks:tasks(),assessment:assess(),freeWindows:free()}}};
 })();
