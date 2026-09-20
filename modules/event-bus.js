@@ -16,4 +16,7 @@
     a.forEach(function(fn){try{fn(payload)}catch(e){console.warn('WWEventBus listener error',type,e)}});
   }
   window.WWEventBus={on:on,off:off,emit:emit,version:'65.26'};
+  // Academic event compatibility bridge: feature controllers and Adaptive Daily OS
+  // use the academic namespace, while the canonical bus remains WWEventBus.
+  window.WWAcademicEvents=window.WWEventBus;
 })();

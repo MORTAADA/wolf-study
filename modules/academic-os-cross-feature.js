@@ -33,21 +33,18 @@
   async function process(type,p){
     p=p||{};
     if(type==='SESSION_COMPLETED'){
-      if(global.WWMastery&&typeof global.WWMastery.recordSession==='function'){
-        try{global.WWMastery.recordSession(st(),p.topicId,p.actualMinutes||p.duration||0);}catch(e){console.warn('Session mastery bridge skipped',e);}
-      }
+      // Evidence is recorded by the originating feature before this event is emitted.
+      // The cross-feature layer only synchronizes derived academic context; recording
+      // it again here would double-count sessions and inflate Mastery.
       await syncMastery(p); await refreshAnalytics(Object.assign({},p,{reason:'session-completed'})); await refreshRevision(Object.assign({},p,{reason:'session-completed'}));
     } else if(type==='MASTERY_CHANGED'){
       await syncMastery(p); await refreshAnalytics(Object.assign({},p,{reason:'mastery-changed'})); await refreshRevision(Object.assign({},p,{reason:'mastery-changed'}));
     } else if(type==='FLASHCARD_REVIEWED'){
-      if(global.WWMastery&&typeof global.WWMastery.recordReview==='function'){
-        try{global.WWMastery.recordReview(st(),p.topicId,p.success!==false);}catch(e){console.warn('Review mastery bridge skipped',e);}
-      }
+      // Flashcard review is already recorded by the flashcard controller.
       await syncMastery(p); await refreshAnalytics(Object.assign({},p,{reason:'flashcard-reviewed'})); await refreshRevision(Object.assign({},p,{reason:'flashcard-reviewed'}));
     } else if(type==='ERROR_CREATED'||type==='ERROR_REVIEWED'){
-      if(global.WWMastery&&typeof global.WWMastery.recordError==='function'){
-        try{global.WWMastery.recordError(st(),p.topicId,p.success===true);}catch(e){console.warn('Error mastery bridge skipped',e);}
-      }
+      // Error creation/review mutates Mastery in the originating action. Do not
+      // replay that evidence here; only refresh the derived contexts.
       await syncMastery(p); await refreshAnalytics(Object.assign({},p,{reason:type.toLowerCase()})); await refreshRevision(Object.assign({},p,{reason:type.toLowerCase()}));
     } else if(type==='RESOURCE_STUDIED'){
       await refreshResources(p); await refreshAnalytics(Object.assign({},p,{reason:'resource-studied'}));

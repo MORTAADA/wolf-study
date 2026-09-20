@@ -48,6 +48,8 @@
   });
 
   if('serviceWorker' in navigator){
+    // V92: one canonical registration path; the legacy pwa.js bridge no longer registers again.
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
     navigator.serviceWorker.addEventListener('message',e=>{
       if(e.data?.type==='WW_SW_READY') {
         document.documentElement.dataset.swVersion=e.data.version||'';
@@ -58,4 +60,19 @@
       if(reg && reg.update) setTimeout(()=>reg.update().catch(()=>{}),1500);
     }).catch(()=>{});
   }
+})();
+
+/* V92 notification bootstrap */
+(() => {
+  'use strict';
+  function sync(){
+    try{
+      const st=window.WWNotifications;
+      if(!st)return;
+      const s=st.get();
+      if(s.enabled && Notification.permission==='granted') st.start(window.WWAppCore&&window.WWAppCore.state||window.state);
+    }catch(_){ }
+  }
+  window.addEventListener('load',()=>setTimeout(sync,1200));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
 })();

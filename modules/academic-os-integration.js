@@ -25,13 +25,13 @@
   }
   async function merge(kind,items){
     var repo=R[kind]; if(!repo)return 0; var current=await repo.getAll(), ids={};current.forEach(function(x){ids[x.id]=1});var n=0;
-    (items||[]).forEach(function(x){if(!x||!x.id||ids[x.id])return;try{repo.add(normalizeLegacy(kind,x));ids[x.id]=1;n++}catch(e){console.warn('WW Academic migration skipped',kind,e)}});return n;
+    for(var i=0;i<(items||[]).length;i++){var x=items[i];if(!x||!x.id||ids[x.id])continue;try{await repo.add(normalizeLegacy(kind,x));ids[x.id]=1;n++}catch(e){console.warn('WW Academic migration skipped',kind,e)}}return n;
   }
   async function migrateAll(){
     if(migrating)return; migrating=true;
     try{
       var s=state()||{};
-      var maps={subjects:'subject',topics:'topic',sessions:'session',tasks:'task',resources:'resource',exams:'exam',errors:'error'};
+      var maps={subjects:'subject',topics:'topic',concepts:'concept',sessions:'session',tasks:'task',resources:'resource',exams:'exam',errors:'error',studyActivities:'studyActivity'};
       for(var k in maps) await merge(maps[k],first(s[k]));
       var m=[]; Object.keys(s.mastery||{}).forEach(function(k){var x=Object.assign({},s.mastery[k],{id:s.mastery[k].id||'mastery-'+k,topicId:k});m.push(x)}); await merge('mastery',m);
       var f=[]; Object.keys(s.flashcards||{}).forEach(function(lang){(s.flashcards[lang]||[]).forEach(function(x){f.push(Object.assign({},x,{id:x.id||('fc-'+lang+'-'+Math.random())}))})}); await merge('flashcard',f);

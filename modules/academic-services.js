@@ -17,8 +17,8 @@
     async saveMastery(x){return saveEntity('mastery',x,'MASTERY_CHANGED')},
     async saveRuntimeProjection(state){ return state; },
     async getAcademicContext(){
-      var all=await Promise.all([R.subjects.getAll(),R.topics.getAll(),R.sessions.getAll(),R.tasks.getAll(),R.resources.getAll(),R.exams.getAll(),R.errors.getAll(),R.mastery.getAll()]);
-      return {subjects:all[0],topics:all[1],sessions:all[2],tasks:all[3],resources:all[4],exams:all[5],errors:all[6],mastery:all[7]};
+      var all=await Promise.all([R.subjects.getAll(),R.topics.getAll(),R.sessions.getAll(),R.tasks.getAll(),R.resources.getAll(),R.exams.getAll(),R.errors.getAll(),R.mastery.getAll(),R.concepts.getAll(),R.studyActivities.getAll()]);
+      return {subjects:all[0],topics:all[1],sessions:all[2],tasks:all[3],resources:all[4],exams:all[5],errors:all[6],mastery:all[7],concepts:all[8],studyActivities:all[9]};
     },
     async migrateLegacyState(state){
       state=state||{};
