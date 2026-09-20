@@ -1,63 +1,59 @@
-/* White Wolf Scholar V80.6 — resilient PWA / offline-first service worker + push receiver */
-const CACHE_NAME = "white-wolf-scholar-v80.8.0";
+/* White Wolf Scholar V92.6 — resilient PWA / offline-first service worker */
+const CACHE_NAME = "white-wolf-scholar-v92.6.0";
 const APP_SHELL = [
-  './modules/academic-os-v4.js',
-  './modules/academic-event-journal-v77.js',
-  './modules/architecture-final-gate-v78.js',
-  './modules/notification-system-v80.4.js',
-  './modules/academic-projection-v68.js',
-  './modules/academic-os-v5.js',
-  './modules/academic-write-bridge.js',
+  './',
+  './index.html',
+  './style.css',
+  './manifest.webmanifest',
+  './logo.webp',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './mountain-bg.jpg',
+  './modules/core-persistence.js',
+  './modules/state.js',
+  './modules/time-engine.js',
+  './modules/router.js',
+  './modules/icons.js',
+  './modules/event-bus.js',
+  './modules/renderer.js',
+  './modules/feature-controllers.js',
+  './modules/task-engine.js',
+  './modules/pdf-reader.js',
+  './modules/ocr-reader.js',
+  './modules/reader.js',
+  './modules/global-search.js',
+  './modules/dependency.js',
+  './modules/document-intelligence.js',
+  './modules/document-map.js',
+  './modules/resource-intelligence.js',
+  './modules/mastery-engine.js',
+  './modules/adaptive-revision.js',
+  './modules/adaptive-quiz.js',
+  './modules/analytics-engine.js',
+  './modules/qa.js',
   './modules/academic-entities.js',
+  './modules/academic-graph.js',
   './modules/academic-migrations.js',
   './modules/academic-repositories.js',
   './modules/academic-services.js',
-  './modules/architecture-v3.js',
-  './modules/architecture-hardening-v65.34.js',
   './modules/academic-os-bootstrap.js',
+  './modules/academic-os-integration.js',
   './modules/academic-os-cutover.js',
   './modules/academic-runtime-v65.33.js',
-  './modules/feature-migration-v65.31.js',
-  './modules/legacy-api-retirement-v65.32.js',
-  './modules/academic-os-integration.js',
+  './modules/academic-os-v4.js',
+  './modules/academic-os-v5.js',
+  './modules/academic-write-bridge.js',
+  './modules/academic-projection-v68.js',
+  './modules/academic-event-journal-v77.js',
+  './script.js',
+  './modules/ui-ux-refinement.js',
+  './modules/adaptive-scheduler.js',
+  './modules/white-wolf-intelligence.js',
+  './modules/adaptive-daily-os.js',
+  './modules/planning-intelligence.js',
+  './modules/notification-engine.js',
+  './modules/pwa-enhanced.js',
   './modules/academic-os-cross-feature.js',
-  "./",
-  "./index.html",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./logo.svg",
-  "./manifest.webmanifest",
-  "./modules/adaptive-quiz.js",
-  "./modules/adaptive-revision.js",
-  "./modules/analytics-engine.js",
-  "./modules/architecture.js",
-  "./modules/backup.js",
-  "./modules/core-persistence.js",
-  "./modules/dependency.js",
-  "./modules/document-intelligence.js",
-  "./modules/document-map.js",
-  "./modules/event-bus.js",
-  "./modules/feature-controllers.js",
-  "./modules/global-search.js",
-  "./modules/icons.js",
-  "./modules/mastery-engine.js",
-  "./modules/ocr-reader.js",
-  "./modules/pdf-reader.js",
-  "./modules/pwa.js",
-  "./modules/qa.js",
-  "./modules/reader.js",
-  "./modules/renderer.js",
-  "./modules/resource-adapter.js",
-  "./modules/resource-intelligence.js",
-  "./modules/router.js",
-  "./modules/services.js",
-  "./modules/state.js",
-  "./modules/study-performance-engine.js",
-  "./modules/study-performance-ui.js",
-  "./modules/ui-ux-refinement.js",
-  "./mountain-bg.jpg",
-  "./script.js",
-  "./style.css"
 ];
 
 self.addEventListener("install", event => {
@@ -75,9 +71,32 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
       .then(clients => clients.forEach(client =>
-        client.postMessage({type:"WW_SW_READY", version:"80.8"})
+        client.postMessage({type:"WW_SW_READY", version:"92.6.0"})
       ))
   );
+});
+
+
+self.addEventListener('message', event => {
+  const d=event.data||{};
+  if(d.type==='WW_SHOW_NOTIFICATION'){
+    event.waitUntil(self.registration.showNotification(d.title||'White Wolf Scholar',{
+      body:d.body||'', icon:'./icons/icon-192.png', badge:'./icons/icon-192.png',
+      tag:'ww-'+((d.data&&d.data.tag)||'general'), data:d.data||{}
+    }));
+  }
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async()=>{
+    const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const target=new URL('./index.html',self.location.origin).href;
+    for(const client of list){
+      if('focus' in client){await client.focus(); if(client.postMessage) client.postMessage({type:'WW_NOTIFICATION_CLICK',data:event.notification.data||{}}); return;}
+    }
+    if(self.clients.openWindow) return self.clients.openWindow(target);
+  })());
 });
 
 function sameOrigin(request) {
@@ -115,18 +134,6 @@ async function navigation(request) {
   );
 }
 
-self.addEventListener("push", event => {
-  var data={}; try{data=event.data?event.data.json():{}}catch(_){data={title:event.data?event.data.text():"White Wolf Scholar",body:"Nouvelle notification"}}
-  var title=data.title||"🐺 White Wolf Scholar";
-  var options={body:data.body||"",icon:data.icon||"./icons/icon-192.png",badge:data.badge||"./icons/icon-192.png",tag:data.tag||"ww-push",data:data.data||{}};
-  if(data.requireInteraction!==undefined)options.requireInteraction=!!data.requireInteraction;
-  event.waitUntil(self.registration.showNotification(title,options));
-});
-self.addEventListener("notificationclick", event => {
-  event.notification.close();
-  var target=(event.notification.data&&event.notification.data.url)||"./";
-  event.waitUntil(self.clients.matchAll({type:"window",includeUncontrolled:true}).then(clients=>{for(var i=0;i<clients.length;i++){if("focus" in clients[i]){clients[i].focus();clients[i].postMessage({type:"WW_NOTIFICATION_CLICK",data:event.notification.data||{}});return clients[i]}}if(self.clients.openWindow)return self.clients.openWindow(target)}));
-});
 
 self.addEventListener("fetch", event => {
   const request = event.request;

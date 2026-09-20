@@ -4,15 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="theme-color" content="#0a0e14">
-<meta name="ww-release" content="80.1-stable">
-<link rel="icon" type="image/svg+xml" href="logo.svg">
+<meta name="ww-release" content="92.6">
+<link rel="icon" type="image/webp" href="logo.webp">
 <title>White Wolf Scholar</title>
-<link rel="stylesheet" href="style.css?v=80.1">
+<link rel="stylesheet" href="style.css?v=92.6.0">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="White Wolf Scholar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style id="ww-v81-task-ux">
+.ww-task-card{gap:10px}.ww-task-status{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid rgba(143,179,230,.22)}
+.ww-task-status.a-faire{opacity:.82}.ww-task-status.en-cours{font-weight:700}.ww-task-status.en-retard{font-weight:700}.ww-task-status.terminee{opacity:.75}
+.ww-deadline{display:inline-flex;margin-left:4px;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:600}.ww-deadline.urgent,.ww-deadline.overdue{font-weight:800}.ww-deadline.today{opacity:.95}.ww-deadline.future{opacity:.8}.ww-deadline.done{opacity:.65}
+.ww-pi-head{gap:10px}.ww-pi-grid>div{min-width:0}.ww-pi-grid b{display:block;margin-top:3px}.ww-pi-row{min-width:0}.ww-pi-row small{display:block;line-height:1.35}
+@media(max-width:600px){.ww-task-card{align-items:flex-start;padding:10px 8px}.ww-task-card .task-left{min-width:0;flex:1}.ww-task-card .task-right{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}.ww-task-card .task-text{font-size:13px;line-height:1.35;overflow-wrap:anywhere}.ww-task-card .task-meta{font-size:10.5px;line-height:1.55}.ww-task-card .btn-small{min-width:34px;min-height:34px;padding:5px}.ww-deadline{margin:3px 0 0 0}.ww-pi-grid{grid-template-columns:1fr 1fr!important;gap:7px!important}.ww-pi-grid>div{padding:9px!important}.ww-pi-row{padding:8px!important}.ww-pi-week-row{display:block!important;padding:8px 0!important}.ww-pi-week-row span{display:block;margin-top:3px;overflow-wrap:anywhere}.ww-pi-head{align-items:flex-start!important}.ww-pi-head>strong{white-space:nowrap}.card{max-width:100%;overflow:hidden}}
+</style>
 </head>
 <body>
 
@@ -21,54 +28,51 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script src="modules/core-persistence.js?v=80.1" defer></script>
-<script src="modules/state.js?v=80.1" defer></script>
-<script src="modules/router.js?v=80.1" defer></script>
-<script src="modules/icons.js?v=80.1" defer></script>
-<script src="modules/event-bus.js?v=80.1" defer></script>
-<script src="modules/renderer.js?v=80.1" defer></script>
-<script src="modules/feature-controllers.js?v=80.1" defer></script>
-<script src="modules/pdf-reader.js?v=80.1" defer></script>
-<script src="modules/ocr-reader.js?v=80.1" defer></script>
-<script src="modules/reader.js?v=80.1" defer></script>
-<script src="modules/resource-adapter.js?v=80.1" defer></script>
-<script src="modules/pwa.js?v=80.1" defer></script>
-<script src="modules/backup.js?v=80.1" defer></script>
-<script src="modules/global-search.js?v=80.1" defer></script>
-<script src="modules/services.js?v=80.1" defer></script>
-<script src="modules/dependency.js?v=80.1" defer></script>
-<script src="modules/architecture.js?v=80.1" defer></script>
-<script src="modules/document-intelligence.js?v=80.1" defer></script>
-<script src="modules/document-map.js?v=80.1" defer></script>
-<script src="modules/resource-intelligence.js?v=80.1" defer></script>
-<script src="modules/mastery-engine.js?v=80.1" defer></script>
-  <script src="modules/adaptive-revision.js?v=80.1" defer></script>
-<script src="modules/adaptive-quiz.js?v=80.1" defer></script>
-<script src="modules/analytics-engine.js?v=80.1" defer></script>
-<script src="modules/qa.js?v=80.1" defer></script>
-<script src="modules/study-performance-engine.js?v=80.1" defer></script>
-<script src="modules/academic-entities.js?v=80.1" defer></script>
-<script src="modules/academic-migrations.js?v=80.1" defer></script>
-<script src="modules/academic-repositories.js?v=80.1" defer></script>
-<script src="modules/academic-services.js?v=80.1" defer></script>
-<script src="modules/architecture-v3.js?v=80.1" defer></script>
-<script src="modules/architecture-hardening-v65.34.js?v=80.1" defer></script>
-<script src="modules/architecture-hardening-v65.35.js?v=80.1" defer></script>
-<script src="modules/academic-os-bootstrap.js?v=80.1" defer></script>
-<script src="modules/academic-os-integration.js?v=80.1" defer></script>
-<script src="modules/academic-os-cutover.js?v=80.1" defer></script>
-<script src="modules/legacy-api-retirement-v65.32.js?v=80.1" defer></script>
-<script src="modules/academic-runtime-v65.33.js?v=80.1" defer></script>
-<script src="modules/feature-migration-v65.31.js?v=80.1" defer></script>
-<script src="modules/academic-os-v4.js?v=80.1" defer></script>
-<script src="modules/academic-os-v5.js?v=80.1" defer></script>
-<script src="modules/academic-write-bridge.js?v=80.1" defer></script>
-<script src="modules/academic-projection-v68.js?v=80.1" defer></script>
-<script src="modules/academic-event-journal-v77.js?v=80.1" defer></script>
-<script src="modules/architecture-final-gate-v78.js?v=80.1" defer></script>
-<script src="modules/release-hardening-v79.js?v=80.1" defer></script>
-<script src="modules/notification-system-v80.4.js?v=80.8" defer></script>
-<script src="script.js?v=80.8" defer></script>
+<script src="modules/core-persistence.js?v=92.6.0" defer></script>
+<script src="modules/state.js?v=92.6.0" defer></script>
+<script src="modules/time-engine.js?v=92.6.0" defer></script>
+<script src="modules/router.js?v=92.6.0" defer></script>
+<script src="modules/icons.js?v=92.6.0" defer></script>
+<script src="modules/event-bus.js?v=92.6.0" defer></script>
+<script src="modules/renderer.js?v=92.6.0" defer></script>
+<script src="modules/feature-controllers.js?v=92.6.0" defer></script>
+<script src="modules/task-engine.js?v=92.6.0" defer></script>
+<script src="modules/pdf-reader.js?v=92.6.0" defer></script>
+<script src="modules/ocr-reader.js?v=92.6.0" defer></script>
+<script src="modules/reader.js?v=92.6.0" defer></script>
+<script src="modules/global-search.js?v=92.6.0" defer></script>
+<script src="modules/dependency.js?v=92.6.0" defer></script>
+<script src="modules/document-intelligence.js?v=92.6.0" defer></script>
+<script src="modules/document-map.js?v=92.6.0" defer></script>
+<script src="modules/resource-intelligence.js?v=92.6.0" defer></script>
+<script src="modules/mastery-engine.js?v=92.6.0" defer></script>
+  <script src="modules/adaptive-revision.js?v=92.6.0" defer></script>
+<script src="modules/adaptive-quiz.js?v=92.6.0" defer></script>
+<script src="modules/analytics-engine.js?v=92.6.0" defer></script>
+<script src="modules/qa.js?v=92.6.0" defer></script>
+<script src="modules/academic-entities.js?v=92.6.0" defer></script>
+<script src="modules/academic-migrations.js?v=92.6.0" defer></script>
+<script src="modules/academic-repositories.js?v=92.6.0" defer></script>
+<script src="modules/academic-services.js?v=92.6.0" defer></script>
+<script src="modules/academic-os-bootstrap.js?v=92.6.0" defer></script>
+<script src="modules/academic-graph.js?v=92.6.0" defer></script>
+<script src="modules/academic-os-integration.js?v=92.6.0" defer></script>
+<script src="modules/academic-os-cutover.js?v=92.6.0" defer></script>
+<script src="modules/academic-runtime-v65.33.js?v=92.6.0" defer></script>
+<script src="modules/academic-os-v4.js?v=92.6.0" defer></script>
+<script src="modules/academic-os-v5.js?v=92.6.0" defer></script>
+<script src="modules/academic-write-bridge.js?v=92.6.0" defer></script>
+<script src="modules/academic-projection-v68.js?v=92.6.0" defer></script>
+<script src="modules/academic-event-journal-v77.js?v=92.6.0" defer></script>
+<script src="modules/ui-ux-refinement.js?v=92.6.0" defer></script>
+<script src="modules/adaptive-scheduler.js?v=92.6.0" defer></script>
+<script src="modules/white-wolf-intelligence.js?v=92.6.0" defer></script>
+<script src="modules/planning-intelligence.js?v=92.6.0" defer></script>
+<script src="modules/notification-engine.js?v=92.6.0" defer></script>
+<script src="modules/pwa-enhanced.js?v=92.6.0" defer></script>
+<script src="modules/academic-os-cross-feature.js?v=92.6.0" defer></script>
+<script src="modules/adaptive-daily-os.js?v=92.6.0" defer></script>
+<script src="script.js?v=92.6.0" defer></script>
 
 <!-- WHITE WOLF V43 — INTERNAL FILE READER -->
 <div id="ww-file-reader" class="ww-file-reader" aria-hidden="true">
@@ -90,45 +94,6 @@
 </div>
 
 
-<!-- WHITE WOLF V45 — BACKUP & RESTORE -->
-<div id="ww-backup-modal" class="ww-backup-modal" aria-hidden="true">
-  <div class="ww-backup-backdrop" data-backup-close></div>
-  <section class="ww-backup-panel" role="dialog" aria-modal="true" aria-label="Backup and Restore">
-    <header class="ww-backup-header">
-      <button class="ww-backup-close" id="ww-backup-close" type="button">×</button>
-      <div>
-        <span class="ww-backup-kicker">WHITE WOLF / DATA SAFETY</span>
-        <h2>Backup & Restore</h2>
-      </div>
-    </header>
-    <main class="ww-backup-body">
-      <div class="ww-backup-card">
-        <div class="ww-backup-icon">↥</div>
-        <div class="ww-backup-copy">
-          <strong>Export your progress</strong>
-          <span>Save your study data as a portable JSON backup.</span>
-        </div>
-        <button class="ww-backup-action" id="ww-backup-export" type="button">EXPORT</button>
-      </div>
-      <div class="ww-backup-card">
-        <div class="ww-backup-icon">↧</div>
-        <div class="ww-backup-copy">
-          <strong>Restore a backup</strong>
-          <span>Import a White Wolf JSON backup without uploading it anywhere.</span>
-        </div>
-        <button class="ww-backup-action" id="ww-backup-import" type="button">IMPORT</button>
-      </div>
-      <input id="ww-backup-file" type="file" accept=".json,application/json" hidden>
-      <div id="ww-backup-status" class="ww-backup-status"></div>
-      <p class="ww-backup-note">Backup files stay on your device unless you choose to share them. File handles for phone resources are not copied into the backup.</p>
-    </main>
-  </section>
-</div>
-
-  <script src="modules/ui-ux-refinement.js?v=80.1" defer></script>
-
-<script src="modules/planning-intelligence.js?v=80.6" defer></script>
-<script src="modules/pwa-enhanced.js?v=80.1" defer></script>
-<script src="modules/academic-os-cross-feature.js?v=80.1" defer></script>
+  
 </body>
 </html>
