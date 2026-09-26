@@ -1,5 +1,5 @@
-/* White Wolf Scholar V93.4 — resilient PWA / offline-first service worker */
-const CACHE_NAME = "white-wolf-scholar-v93.11.0";
+/* White Wolf Scholar V93.11.1 — mobile cache recovery + resilient PWA */
+const CACHE_NAME = "white-wolf-scholar-v93.11.1";
 const APP_SHELL = [
   './',
   './index.html',
@@ -72,7 +72,7 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
       .then(clients => clients.forEach(client =>
-        client.postMessage({type:"WW_SW_READY", version:"93.11.0"})
+        client.postMessage({type:"WW_SW_READY", version:"93.11.1"})
       ))
   );
 });
@@ -119,6 +119,24 @@ async function cacheFirst(request) {
   }
 }
 
+// Code assets must not be trapped behind an old mobile/PWA cache.
+// Online: fetch the newest JS/CSS from GitHub Pages first.
+// Offline: fall back to the current versioned cache.
+async function codeAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request, {cache:"no-store"});
+    if (response && response.ok) {
+      cache.put(request, response.clone()).catch(()=>{});
+      return response;
+    }
+  } catch (_) {}
+  return cache.match(request, {ignoreSearch:true}) || new Response("Offline", {
+    status:503,
+    headers:{"Content-Type":"text/plain; charset=utf-8"}
+  });
+}
+
 async function navigation(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match("./index.html", {ignoreSearch:true});
@@ -144,6 +162,12 @@ self.addEventListener("fetch", event => {
     return;
   }
   if (sameOrigin(request)) {
+    const dest = request.destination || "";
+    const path = new URL(request.url).pathname;
+    if (dest === "script" || dest === "style" || /\.(?:js|css)$/.test(path)) {
+      event.respondWith(codeAsset(request));
+      return;
+    }
     event.respondWith(cacheFirst(request));
   }
 });
