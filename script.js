@@ -522,7 +522,7 @@ function getDailyActivityMinutes(){
   wwAllActivitySessions().forEach(function(a){days[a.date]=(days[a.date]||0)+a.duration}); return days;
 }
 function getHeatmapData(){
-  var days=getDailyStudyMinutes(),today=new Date();today.setHours(23,59,59,999),result=[],start=new Date(today);start.setDate(start.getDate()-364);var offset=start.getDay();start.setDate(start.getDate()-offset);
+  var days=getDailyStudyMinutes(),today=new Date(),result=[];today.setHours(23,59,59,999);var start=new Date(today);start.setDate(start.getDate()-364);var offset=start.getDay();start.setDate(start.getDate()-offset);
   for(var i=0;i<371;i++){var d=new Date(start);d.setDate(d.getDate()+i);if(d>today)break;var key=wwLocalDateISO(d),min=days[key]||0,level=min>=120?4:min>=60?3:min>=30?2:min>0?1:0;result.push({date:key,minutes:min,level:level,weekday:d.getDay()})}return result;
 }
 function getWeeklyBarData(){var days=[],labels=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],map=getDailyStudyMinutes(),today=new Date();for(var i=6;i>=0;i--){var d=new Date(today);d.setDate(d.getDate()-i);var key=wwLocalDateISO(d);days.push({label:labels[d.getDay()],minutes:map[key]||0,date:key})}return days}
