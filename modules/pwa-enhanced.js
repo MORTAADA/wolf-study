@@ -49,7 +49,7 @@
 
   if('serviceWorker' in navigator){
     // V92: one canonical registration path; the legacy pwa.js bridge no longer registers again.
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js?v=93.11.1', {updateViaCache:'none'}).catch(()=>{});
     navigator.serviceWorker.addEventListener('message',e=>{
       if(e.data?.type==='WW_SW_READY') {
         document.documentElement.dataset.swVersion=e.data.version||'';
