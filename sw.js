@@ -1,5 +1,5 @@
-/* White Wolf Scholar V92.6 — resilient PWA / offline-first service worker */
-const CACHE_NAME = "white-wolf-scholar-v92.6.0";
+/* White Wolf Scholar V93.4 — resilient PWA / offline-first service worker */
+const CACHE_NAME = "white-wolf-scholar-v93.10.0";
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const APP_SHELL = [
   './mountain-bg.jpg',
   './modules/core-persistence.js',
   './modules/state.js',
+  './modules/unified-activities.js',
   './modules/time-engine.js',
   './modules/router.js',
   './modules/icons.js',
@@ -71,7 +72,7 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({type:"window", includeUncontrolled:true}))
       .then(clients => clients.forEach(client =>
-        client.postMessage({type:"WW_SW_READY", version:"92.6.0"})
+        client.postMessage({type:"WW_SW_READY", version:"93.10.0"})
       ))
   );
 });

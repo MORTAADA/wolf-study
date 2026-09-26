@@ -3,7 +3,6 @@
 
 // V65.26 Dependency Container — application code consumes stable service contracts.
 var WW=window.WWDI?WWDI.create():{};
-if(!WW.ready) console.warn('White Wolf: dependency container incomplete; compatibility mode active.');
 var WWPersistence=WW.persistence||window.WWCorePersistence;
 var WWEvents=WW.events||window.WWEventBus;
 
@@ -357,6 +356,11 @@ var DEFAULT_SCHEDULE = {
   dimanche:'🛌 Repos'
 };
 
+// Public bridge for Planning Intelligence: the schedule is declared in this legacy
+// script scope, while Planning Intelligence runs from its own module scope.
+window.COURSE_SCHEDULE = COURSE_SCHEDULE;
+window.DEFAULT_SCHEDULE = DEFAULT_SCHEDULE;
+
 var DB_NAME=window.WWCorePersistence.dbName, STORE_NAME='data', db=null, dbUnavailable=false;
 var DB_FALLBACK_KEY='wwAppStateFallback';
 function openDB(){return window.WWCorePersistence.open().then(function(handle){db=handle;dbUnavailable=false;return handle}).catch(function(e){dbUnavailable=true;throw e})}
@@ -418,8 +422,9 @@ async function wwOpenResourceInApp(sid,rid){
 var state = window.WWState.create({subjects:MASTER_SUBJECTS, topics:TOPICS_SEED, languages:JSON.parse(JSON.stringify(LANGUAGES))});
 window.__WW_STATE=state;
 // V63.6 — User-controlled Study Scope. Intelligence only operates inside the user's active scope.
-state.studyScope=state.studyScope||{subjects:{},topics:{}};state.documentIntelligence=state.documentIntelligence||{resources:{},activeResourceId:null};state.resourceIntelligence=state.resourceIntelligence||{version:'65.33'};
+state.studyScope=state.studyScope||{subjects:{},topics:{}};state.focusContext=state.focusContext||{type:'study',title:'',subjectId:'',topicId:'',taskId:'',notes:''};state.focusSessions=Array.isArray(state.focusSessions)?state.focusSessions:[];state.activities=Array.isArray(state.activities)?state.activities:[];state.documentIntelligence=state.documentIntelligence||{resources:{},activeResourceId:null};state.resourceIntelligence=state.resourceIntelligence||{version:'65.33'};
 var pomodoro = window.WWState.createPomodoro();
+pomodoro.sessionStartedAt=null;pomodoro.workElapsedBeforePause=0;pomodoro.lastRunAt=null;
 var wwFocusTopicId='';
 try{wwFocusTopicId=localStorage.getItem('wwFocusTopicId')||''}catch(e){}
 try{var wwPomoSaved=JSON.parse(localStorage.getItem('wwPomodoroSettings')||'null');if(wwPomoSaved){if(Number.isFinite(+wwPomoSaved.workTime))pomodoro.workTime=Math.max(1,Math.min(600,+wwPomoSaved.workTime));if(Number.isFinite(+wwPomoSaved.breakTime))pomodoro.breakTime=Math.max(0,Math.min(600,+wwPomoSaved.breakTime));pomodoro.freeMode=!!wwPomoSaved.freeMode;pomodoro.remaining=pomodoro.workTime*60;}}catch(e){}
@@ -474,135 +479,61 @@ var navigate = window.WWRouter.create(state, render);
 // ============================================================
 //  ADVANCED STATS HELPERS
 // ============================================================
-function getDailyStudyMinutes(){
-  var days={};
-  state.sessions.forEach(function(s){
-    if(!s.date)return;
-    var d=s.date.slice(0,10);
-    days[d]=(days[d]||0)+(s.duration||0);
-  });
-  state.tasks.forEach(function(t){
-    if(t.isDone&&t.date){
-      var d=t.date.slice(0,10);
-      if(!days[d])days[d]=0;
+function wwStatNum(v){var n=Number(v);return Number.isFinite(n)&&n>0?n:0}
+function wwStatDateKey(v){
+  if(!v)return '';
+  var str=String(v);
+  if(/^\d{4}-\d{2}-\d{2}/.test(str))return str.slice(0,10);
+  var d=new Date(v); if(isNaN(d.getTime()))return '';
+  return wwLocalDateISO(d);
+}
+function wwStudySessions(){
+  return (Array.isArray(state.sessions)?state.sessions:[]).filter(function(s){return wwStatNum(s&&s.duration)>0&&!!wwStatDateKey(s.date||s.started_at)})
+    .map(function(s){return Object.assign({},s,{duration:wwStatNum(s.duration||s.actualMinutes),date:wwStatDateKey(s.date||s.started_at)})});
+}
+function wwAllActivitySessions(){
+  /* Unified Activities is canonical for non-academic activities. Focus 2.0 also
+     keeps focusSessions for history/UI, so never count the same Focus record twice.
+     Legacy focus records that were never projected to Unified Activities remain
+     supported through the fallback pass below. */
+  var out=[],seen={};
+  (Array.isArray(state.activities)?state.activities:[]).forEach(function(x){
+    var m=wwStatNum(x.actualMinutes||x.duration),d=wwStatDateKey(x.date||x.started_at);
+    if(m&&d&&!(x.type==='study'&&x.academicSessionId)){
+      var id=x.id||('activity_'+d+'_'+String(x.title||''));
+      seen[id]=true;
+      out.push(Object.assign({},x,{duration:m,date:d,activityType:x.type||'activity'}));
     }
   });
-  return days;
+  (Array.isArray(state.focusSessions)?state.focusSessions:[]).forEach(function(x){
+    var m=wwStatNum(x.actualMinutes||x.duration),d=wwStatDateKey(x.date||x.started_at);
+    var id=x.id;
+    if(m&&d&&!(x.type==='study'&&x.academicSessionId)&&!seen[id]){
+      out.push(Object.assign({},x,{duration:m,date:d,activityType:x.type||'personal'}));
+    }
+  });
+  return out;
+}
+function getDailyStudyMinutes(){
+  var days={}; wwStudySessions().forEach(function(s){days[s.date]=(days[s.date]||0)+s.duration}); return days;
+}
+function getDailyActivityMinutes(){
+  var days={}; wwStudySessions().forEach(function(s){days[s.date]=(days[s.date]||0)+s.duration});
+  wwAllActivitySessions().forEach(function(a){days[a.date]=(days[a.date]||0)+a.duration}); return days;
 }
 function getHeatmapData(){
-  var days=getDailyStudyMinutes();
-  var today=new Date();
-  var result=[];
-  var start=new Date(today);
-  start.setDate(start.getDate()-364);
-  // Ajuster au dimanche
-  var offset=start.getDay();
-  start.setDate(start.getDate()-offset);
-  var totalDays=371;
-  for(var i=0;i<totalDays;i++){
-    var d=new Date(start);
-    d.setDate(d.getDate()+i);
-    if(d>today)break;
-    var key=wwLocalDateISO(d);
-    var min=days[key]||0;
-    var level=0;
-    if(min>=120)level=4;
-    else if(min>=60)level=3;
-    else if(min>=30)level=2;
-    else if(min>0)level=1;
-    result.push({date:key,minutes:min,level:level,weekday:d.getDay()});
-  }
-  return result;
+  var days=getDailyStudyMinutes(),today=new Date();today.setHours(23,59,59,999),result=[],start=new Date(today);start.setDate(start.getDate()-364);var offset=start.getDay();start.setDate(start.getDate()-offset);
+  for(var i=0;i<371;i++){var d=new Date(start);d.setDate(d.getDate()+i);if(d>today)break;var key=wwLocalDateISO(d),min=days[key]||0,level=min>=120?4:min>=60?3:min>=30?2:min>0?1:0;result.push({date:key,minutes:min,level:level,weekday:d.getDay()})}return result;
 }
-function getWeeklyBarData(){
-  // 7 derniers jours
-  var days=[];
-  var labels=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  var today=new Date();
-  for(var i=6;i>=0;i--){
-    var d=new Date(today);
-    d.setDate(d.getDate()-i);
-    var key=wwLocalDateISO(d);
-    var min=getDailyStudyMinutes()[key]||0;
-    days.push({label:labels[d.getDay()],minutes:min,date:key});
-  }
-  return days;
-}
-function getSubjectPieData(){
-  var totals={};
-  state.sessions.forEach(function(s){
-    if(!s.subject_id)return;
-    var subj=state.subjects.find(function(x){return x.id===s.subject_id});
-    if(!subj)return;
-    totals[subj.name]=(totals[subj.name]||0)+(s.duration||0);
-  });
-  var arr=Object.keys(totals).map(function(name){return{name:name,minutes:totals[name]}});
-  arr.sort(function(a,b){return b.minutes-a.minutes});
-  return arr.slice(0,6);
-}
-function getMonthlyLineData(){
-  // 6 derniers mois : progression globale
-  var months=[];
-  var now=new Date();
-  for(var i=5;i>=0;i--){
-    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    var monthStr=wwLocalMonthISO(d);
-    var monthSessions=state.sessions.filter(function(s){
-      return s.date && s.date.slice(0,7)===monthStr;
-    });
-    var min=monthSessions.reduce(function(sum,s){return sum+(s.duration||0)},0);
-    months.push({
-      label:d.toLocaleDateString('fr-FR',{month:'short'}),
-      hours:Math.round(min/60*10)/10,
-      sessions:monthSessions.length
-    });
-  }
-  return months;
-}
-function getTopStudyDays(){
-  var days=getDailyStudyMinutes();
-  var arr=Object.keys(days).map(function(date){return{date:date,minutes:days[date]}});
-  arr.sort(function(a,b){return b.minutes-a.minutes});
-  return arr.slice(0,5);
-}
-function getTotalStudyHours(){
-  var min=state.sessions.reduce(function(sum,s){return sum+(s.duration||0)},0);
-  return Math.round(min/60*10)/10;
-}
-function getWeeklyGoalProgress(){
-  var days=getDailyStudyMinutes();
-  var today=new Date();
-  var weekTotal=0;
-  for(var i=0;i<7;i++){
-    var d=new Date(today);
-    d.setDate(d.getDate()-i);
-    var key=wwLocalDateISO(d);
-    weekTotal+=(days[key]||0);
-  }
-  var goal=7*60; // 7h/semaine par défaut
-  return {current:weekTotal,goal:goal,percent:Math.min(Math.round(weekTotal/goal*100),100)};
-}
-function getStudyStreakFromSessions(){
-  var days=getDailyStudyMinutes();
-  var today=new Date();
-  var streak=0;
-  for(var i=0;i<365;i++){
-    var d=new Date(today);
-    d.setDate(d.getDate()-i);
-    var key=wwLocalDateISO(d);
-    if(days[key]&&days[key]>0)streak++;
-    else if(i>0)break;
-  }
-  return streak;
-}
-function getAveragePerDay(){
-  var days=getDailyStudyMinutes();
-  var keys=Object.keys(days);
-  if(!keys.length)return 0;
-  var total=keys.reduce(function(sum,k){return sum+days[k]},0);
-  return Math.round(total/keys.length);
-}
-
+function getWeeklyBarData(){var days=[],labels=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],map=getDailyStudyMinutes(),today=new Date();for(var i=6;i>=0;i--){var d=new Date(today);d.setDate(d.getDate()-i);var key=wwLocalDateISO(d);days.push({label:labels[d.getDay()],minutes:map[key]||0,date:key})}return days}
+function getSubjectPieData(){var totals={};wwStudySessions().forEach(function(s){if(!s.subject_id)return;var subj=state.subjects.find(function(x){return x.id===s.subject_id});if(subj)totals[subj.name]=(totals[subj.name]||0)+s.duration});return Object.keys(totals).map(function(name){return{name:name,minutes:totals[name]}}).sort(function(a,b){return b.minutes-a.minutes}).slice(0,6)}
+function getMonthlyLineData(){var months=[],now=new Date();for(var i=5;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1),monthStr=wwLocalDateISO(d).slice(0,7),ss=wwStudySessions().filter(function(s){return s.date.slice(0,7)===monthStr}),min=ss.reduce(function(a,x){return a+x.duration},0);months.push({label:d.toLocaleDateString('fr-FR',{month:'short'}),hours:Math.round(min/60*10)/10,sessions:ss.length})}return months}
+function getTopStudyDays(){return Object.keys(getDailyStudyMinutes()).map(function(date){return{date:date,minutes:getDailyStudyMinutes()[date]}}).sort(function(a,b){return b.minutes-a.minutes}).slice(0,5)}
+function getTotalStudyHours(){return Math.round(wwStudySessions().reduce(function(a,s){return a+s.duration},0)/60*10)/10}
+function getWeeklyGoalProgress(){var days=getDailyStudyMinutes(),today=new Date(),weekTotal=0;for(var i=0;i<7;i++){var d=new Date(today);d.setDate(d.getDate()-i);weekTotal+=days[wwLocalDateISO(d)]||0}var goal=420;return{current:weekTotal,goal:goal,percent:Math.min(Math.round(weekTotal/goal*100),100)}}
+function getStudyStreakFromSessions(){var days=getDailyStudyMinutes(),today=new Date(),streak=0;for(var i=0;i<365;i++){var d=new Date(today);d.setDate(d.getDate()-i);var m=days[wwLocalDateISO(d)]||0;if(m>0)streak++;else if(i>0)break}return streak}
+function getAveragePerDay(){var days=getDailyStudyMinutes(),keys=Object.keys(days);if(!keys.length)return 0;return Math.round(keys.reduce(function(a,k){return a+days[k]},0)/keys.length)}
+function getActivityTotals(){var study=wwStudySessions().reduce(function(a,s){return a+s.duration},0),other=wwAllActivitySessions().reduce(function(a,s){return a+s.duration},0);return{studyMinutes:study,otherMinutes:other,totalMinutes:study+other,studySessions:wwStudySessions().length,otherSessions:wwAllActivitySessions().length}} 
 // ============================================================
 //  SVG CHARTS GENERATORS
 // ============================================================
@@ -998,39 +929,82 @@ function wwIntelSourceChips(sources){return '<div class="ww-intel-sources"><span
 function renderIntelligenceBrief(){var s=wwIntelSnapshot(),a=wwIntelligenceNextAction(s),action='';if(a.type==='exam'&&s.exam)action='<button class="ww-intel-action btn-primary" data-exam-prep="'+s.exam.exam.id+'">'+a.button+' →</button>';else if(a.type==='errors')action='<button class="ww-intel-action btn-primary" data-route="stats" data-intel-stats="errors">'+a.button+' →</button>';else if(a.type==='topic')action='<button class="ww-intel-action btn-primary" data-route="subject" data-subject-id="'+a.subjectId+'">'+a.button+' →</button>';else if(a.type==='tasks'||a.type==='mission')action='<button class="ww-intel-action btn-primary" data-route="planning">'+a.button+' →</button>';else if(a.type==='momentum')action='<button class="ww-intel-action btn-primary" data-route="stats">'+a.button+' →</button>';else action='<button class="ww-intel-action btn-primary" data-route="master">'+a.button+' →</button>';var bars=a.signals.filter(function(x){return x.key!=='momentum'||x.score>15}).sort(function(x,y){return y.score-x.score}).slice(0,5).map(function(x){return '<div class="ww-intel-signal"><div><span>'+x.label+'</span><small>'+x.detail+'</small></div><b>'+x.score+'</b><i><em style="width:'+x.score+'%"></em></i></div>'}).join('');var examLine=s.exam?'<span>🎯 '+s.exam.exam.title+' · '+getExamCountdownLabel(s.exam.dateObj)+'</span>':'<span>🎯 Aucun examen à venir</span>';var classLine=s.currentClass?'<span>🔴 Cours en cours · '+s.currentClass.subject+'</span>':s.nextClass?'<span>⏳ Prochain cours · '+s.nextClass.subject+' à '+s.nextClass.start+'</span>':'<span>☕ Aucun cours imminent</span>';var weakLine=s.weak?'<span>🧠 Point faible · '+s.weak.topic.title+' · Niv. '+s.weak.progress.level+'/4</span>':'<span>🧠 Aucun point faible détecté</span>';return '<div class="ww-intelligence card"><div class="ww-intel-head"><div><div class="card-title">🧠 Academic Command Center</div><div class="ww-intel-sub">Intelligence 3.0 · recommandations explicables · Planning Hebdo inchangé</div></div><span class="ww-intel-live">LIVE</span></div><div class="ww-intel-command-grid"><div class="ww-command-stat"><strong>'+s.mission.done+'/'+s.mission.total+'</strong><span>🎯 Mission</span></div><div class="ww-command-stat"><strong>'+s.weeklyMinutes+' min</strong><span>⏱️ Focus / 7j</span></div><div class="ww-command-stat"><strong>'+s.weekSessions+'</strong><span>📚 Sessions / 7j</span></div><div class="ww-command-stat"><strong>'+s.errors.length+'</strong><span>⚠️ Erreurs dues</span></div></div><div class="ww-intel-context">'+classLine+examLine+weakLine+'</div><div class="ww-intel-main"><div class="ww-intel-icon">'+a.icon+'</div><div class="ww-intel-copy"><div class="ww-intel-title">'+a.title+'</div><div class="ww-intel-desc">'+a.desc+'</div><div class="ww-intel-reason"><b>Pourquoi :</b> '+a.reason+'</div>'+wwIntelSourceChips(a.source)+'</div></div>'+action+'<div class="ww-intel-score-head"><span>Priority Score</span><strong>'+a.score+'/100</strong></div><div class="ww-intel-signals-grid">'+bars+'</div><div class="ww-intel-signals"><span>📋 '+s.tasks.length+' tâche'+(s.tasks.length!==1?'s':'')+' ouverte'+(s.tasks.length!==1?'s':'')+'</span><span>⏱️ Aujourd’hui '+s.todayMinutes+' min</span><span>📈 Planning → Exécution → Intelligence</span></div></div>'}
 
 function wwFocusTopic(){return state.topics.find(function(t){return t.id===wwFocusTopicId})||null}
-function wwSetFocusTopic(id){wwFocusTopicId=id||'';try{if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){};render()}
-function wwLogCompletedFocus(){var topic=wwFocusTopic();if(!topic)return false;var duration=Math.max(1,Math.round((pomodoro.workTime||25)));var today=wwLocalDateISO(new Date());var wwSession={id:generateId(),topic_id:topic.id,subject_id:topic.subject_id||null,date:today,duration:duration,source:'focus',started_at:new Date().toISOString(),ended_at:new Date(Date.now()+duration*60000).toISOString()};state.sessions.push(wwSession);if(window.WWAcademicWriteBridge){window.WWAcademicWriteBridge.session(wwSession).catch(function(e){console.warn('Academic session command failed',e)})}else if(window.WWAcademicEvents)WWAcademicEvents.emit('SESSION_COMPLETED',{sessionId:wwSession.id,subjectId:topic.subject_id||null,topicId:topic.id,actualMinutes:duration,activityType:'focus'});if(window.WWMastery)window.WWMastery.recordSession(state,topic.id,duration);state.xp+=10;var pr=getProgress(topic.id);pr.last_studied=today;pr.score=wwMasteryScore(topic.id);state.progress[topic.id]=pr;saveState();showToast('🎯 Session Focus enregistrée · +10 XP');return true}
-function renderFocusCockpit(){var selected=wwFocusTopic();var options='<option value="">Choisir un chapitre à travailler…</option>'+wwActiveTopics().map(function(t){var sub=state.subjects.find(function(x){return x.id===t.subject_id});return '<option value="'+wwEscapeHTML(t.id)+'" '+(t.id===wwFocusTopicId?'selected':'')+'>'+(sub?wwEscapeHTML(sub.name)+' · ':'')+wwEscapeHTML(t.title)+'</option>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus Session</div><div class="ww-focus-sub">Lie ton minuteur à un chapitre pour enregistrer automatiquement la session.</div></div><span class="ww-focus-badge">V63.2</span></div><div class="ww-focus-row"><select id="ww-focus-topic">'+options+'</select><button class="btn-primary btn-small" data-focus-apply>Associer</button></div>'+(selected?'<div class="ww-focus-selected">📚 '+wwEscapeHTML(selected.title)+' <span>· Niveau '+getProgress(selected.id).level+'/4</span></div>':'<div class="ww-focus-empty">Aucun chapitre associé. Le minuteur reste utilisable normalement.</div>')+'</div>'}
+var WW_FOCUS_TYPES={study:{label:'Étude',icon:'📚',academic:true},task:{label:'Task',icon:'✅',academic:false},growth:{label:'Growth',icon:'🌱',academic:false},sport:{label:'Sport',icon:'🏋️',academic:false},project:{label:'Projet',icon:'🚀',academic:false},personal:{label:'Personnel',icon:'👤',academic:false},research:{label:'Recherche',icon:'🔬',academic:false}};
+function wwFocusContext(){var c=state.focusContext||{};var topic=state.topics.find(function(t){return t.id===c.topicId});var task=(state.tasks||[]).find(function(t){return t.id===c.taskId});return {type:WW_FOCUS_TYPES[c.type]?c.type:'study',title:String(c.title||''),subjectId:c.subjectId||'',topicId:c.topicId||'',taskId:c.taskId||'',notes:String(c.notes||''),topic:topic,task:task}}
+function wwFocusContextLabel(c){var type=WW_FOCUS_TYPES[c.type]||WW_FOCUS_TYPES.study;var title=c.title||'';if(c.type==='study'&&c.topic){var sub=state.subjects.find(function(x){return x.id===c.topic.subject_id});return type.icon+' '+(sub?sub.name+' · ':'')+c.topic.title}if(c.type==='task'&&c.task)return type.icon+' '+c.task.text;return type.icon+' '+(title||type.label)}
+function wwSetFocusContext(ctx){ctx=ctx||{};var type=WW_FOCUS_TYPES[ctx.type]?ctx.type:'study';var topic=ctx.topicId?state.topics.find(function(t){return t.id===ctx.topicId}):null;var task=ctx.taskId?(state.tasks||[]).find(function(t){return t.id===ctx.taskId}):null;if(type==='study'&&!topic){showToast('⚠️ Choisis une matière et un chapitre');return false}if(type==='task'&&!task){showToast('⚠️ Choisis une tâche');return false}if(type!=='study'&&type!=='task'&&!String(ctx.title||'').trim()){showToast('⚠️ Donne un nom à cette activité');return false}state.focusContext={type:type,title:String(ctx.title||'').trim(),subjectId:topic?topic.subject_id:(ctx.subjectId||''),topicId:topic?topic.id:'',taskId:task?task.id:'',notes:String(ctx.notes||'').trim()};wwFocusTopicId=topic?topic.id:'';try{localStorage.setItem('wwFocusContext',JSON.stringify(state.focusContext));if(wwFocusTopicId)localStorage.setItem('wwFocusTopicId',wwFocusTopicId);else localStorage.removeItem('wwFocusTopicId')}catch(e){}saveState();showToast('🎯 Activité Focus associée');render();return true}
+function wwClearFocusContext(){if(pomodoro.isRunning){showToast('⚠️ Arrête d’abord le minuteur');return}state.focusContext={type:'study',title:'',subjectId:'',topicId:'',taskId:'',notes:''};wwFocusTopicId='';try{localStorage.removeItem('wwFocusContext');localStorage.removeItem('wwFocusTopicId')}catch(e){}saveState();render()}
+function wwRecordFocusSession(actualMinutes,startedAt,source){var c=wwFocusContext();actualMinutes=Math.floor(Number(actualMinutes)||0);if(!c.topic||actualMinutes<1)return false;var endedAt=new Date().toISOString(),start=startedAt||new Date(Date.now()-actualMinutes*60000).toISOString(),today=wwLocalDateISO(new Date(start));var ss={id:generateId(),topic_id:c.topic.id,subject_id:c.topic.subject_id||null,date:today,duration:actualMinutes,actualMinutes:actualMinutes,plannedMinutes:actualMinutes,source:source||'focus',started_at:start,ended_at:endedAt};state.sessions.push(ss);if(window.WWAcademicWriteBridge)window.WWAcademicWriteBridge.session(ss).catch(function(e){console.warn('Academic session command failed',e)});if(window.WWAcademicEvents)WWAcademicEvents.emit('SESSION_COMPLETED',{sessionId:ss.id,subjectId:c.topic.subject_id||null,topicId:c.topic.id,actualMinutes:actualMinutes,startedAt:start,endedAt:endedAt,activityType:source||'focus'});if(window.WWMastery)window.WWMastery.recordSession(state,c.topic.id,actualMinutes);state.xp+=10;var pr=getProgress(c.topic.id);pr.last_studied=today;pr.score=wwMasteryScore(c.topic.id);state.progress[c.topic.id]=pr;state.lastStudyDate=today;state.studyStreak=getStudyStreakFromSessions();return ss}
+function wwRecordFocusActivitySession(actualMinutes,startedAt,source){var c=wwFocusContext();actualMinutes=Math.floor(Number(actualMinutes)||0);if(actualMinutes<1)return false;var endedAt=new Date().toISOString(),start=startedAt||new Date(Date.now()-actualMinutes*60000).toISOString(),type=WW_FOCUS_TYPES[c.type]?c.type:'study',academic=null;if(type==='study'){if(!c.topic){showToast('⚠️ لا توجد مادة/فصل مرتبطان بهذه الجلسة');return false}academic=wwRecordFocusSession(actualMinutes,start,source||'focus');if(!academic)return false}else{state.xp+=5}var rec={id:generateId(),type:type,title:c.title||((c.task&&c.task.text)||WW_FOCUS_TYPES[type].label),subjectId:c.subjectId||null,topicId:c.topicId||null,taskId:c.taskId||null,notes:c.notes||'',date:wwLocalDateISO(new Date(start)),duration:actualMinutes,actualMinutes:actualMinutes,started_at:start,ended_at:endedAt,source:source||'focus',academicSessionId:academic?academic.id:null,completed:true};state.focusSessions.push(rec);var unified=null;if(window.WWActivities){unified=WWActivities.complete(state,{id:rec.id,type:type,title:rec.title,subjectId:rec.subjectId,topicId:rec.topicId,taskId:rec.taskId,notes:rec.notes,date:rec.date,duration:actualMinutes,startedAt:start,endedAt:endedAt,source:source||'focus',academicSessionId:rec.academicSessionId})}if(window.WWAcademicEvents)WWAcademicEvents.emit('FOCUS_ACTIVITY_COMPLETED',{activityId:rec.id,activityType:type,title:rec.title,actualMinutes:actualMinutes,taskId:rec.taskId||null,subjectId:rec.subjectId||null,topicId:rec.topicId||null,startedAt:start,endedAt:endedAt,unifiedActivityId:unified?unified.id:null});saveState();showToast((WW_FOCUS_TYPES[type]||{}).icon+' '+(WW_FOCUS_TYPES[type]||{}).label+' · '+actualMinutes+' min enregistrées');return rec}
+function wwLogCompletedFocus(){var actualSeconds=Number(pomodoro.workElapsedBeforePause)||0;if(pomodoro.isRunning&&pomodoro.lastRunAt)actualSeconds+=Math.max(0,Math.round((Date.now()-pomodoro.lastRunAt)/1000));var duration=Math.floor(actualSeconds/60);if(duration<1)duration=Math.max(1,Math.round((pomodoro.workTime||25)));return wwRecordFocusActivitySession(duration,pomodoro.sessionStartedAt,'focus')}
+function renderFocusCockpit(){var c=wwFocusContext(),type=WW_FOCUS_TYPES[c.type]||WW_FOCUS_TYPES.study;var subjectOptions='<option value="">Choisir une matière…</option>'+state.subjects.map(function(s){return '<option value="'+wwEscapeHTML(s.id)+'" '+(s.id===c.subjectId?'selected':'')+'>'+wwEscapeHTML(s.name)+'</option>'}).join('');var topicOptions='<option value="">Choisir un chapitre…</option>'+state.topics.filter(function(t){return !c.subjectId||t.subject_id===c.subjectId}).map(function(t){return '<option value="'+wwEscapeHTML(t.id)+'" '+(t.id===c.topicId?'selected':'')+'>'+wwEscapeHTML(t.title)+'</option>'}).join('');var taskOptions='<option value="">Choisir une tâche…</option>'+(state.tasks||[]).filter(function(t){return !t.isDone}).map(function(t){return '<option value="'+wwEscapeHTML(t.id)+'" '+(t.id===c.taskId?'selected':'')+'>'+wwEscapeHTML(t.text)+' · '+wwEscapeHTML(t.date||'')+'</option>'}).join('');var typeOptions=Object.keys(WW_FOCUS_TYPES).map(function(k){return '<option value="'+k+'" '+(k===c.type?'selected':'')+'>'+WW_FOCUS_TYPES[k].icon+' '+WW_FOCUS_TYPES[k].label+'</option>'}).join('');var special=c.type==='study'?'<div class="ww-focus-grid"><select id="ww-focus-subject" data-focus-subject>'+subjectOptions+'</select><select id="ww-focus-topic" data-focus-topic>'+topicOptions+'</select></div>':c.type==='task'?'<select id="ww-focus-task" data-focus-task>'+taskOptions+'</select>':'<input id="ww-focus-title" data-focus-title value="'+wwEscapeHTML(c.title)+'" placeholder="Nom de l’activité (ex. Musculation, Projet GitHub…)" />';var history=(state.focusSessions||[]).slice(-5).reverse().map(function(x){var tx=WW_FOCUS_TYPES[x.type]||WW_FOCUS_TYPES.personal;return '<div class="ww-focus-history-row"><span>'+tx.icon+'</span><div><b>'+wwEscapeHTML(x.title)+'</b><small>'+x.date+' · '+x.duration+' min</small></div></div>'}).join('');return '<div class="ww-focus-cockpit card"><div class="ww-focus-head"><div><div class="card-title">🎯 Focus 2.0</div><div class="ww-focus-sub">Le minuteur peut maintenant enregistrer une étude, une tâche, du Growth, du sport, un projet, du personnel ou de la recherche.</div></div><span class="ww-focus-badge">V2</span></div><div class="ww-focus-type-row"><label>Type d’activité<select id="ww-focus-type" data-focus-type>'+typeOptions+'</select></label></div>'+special+'<textarea id="ww-focus-notes" data-focus-notes rows="2" placeholder="Note optionnelle…">'+wwEscapeHTML(c.notes)+'</textarea><div class="ww-focus-actions"><button class="btn-primary btn-small" data-focus-apply>Associer au minuteur</button>'+(c.topic||c.task||c.title?'<button class="btn-outline btn-small" data-focus-clear>Effacer</button>':'')+'</div>'+(c.topic||c.task||c.title?'<div class="ww-focus-selected">'+wwEscapeHTML(wwFocusContextLabel(c))+'</div>':'<div class="ww-focus-empty">Choisis ce que tu vas réellement faire avant de lancer le minuteur.</div>')+(history?'<div class="ww-focus-history"><div class="ww-focus-history-title">Dernières activités</div>'+history+'</div>':'')+'</div>'}
+
+function wwDashboardTodayMinutes(){
+  var d=wwLocalDateISO(new Date());
+  return (state.sessions||[]).filter(function(s){return s.date===d}).reduce(function(a,s){return a+Number(s.duration||s.actualMinutes||0)},0);
+}
+function wwDashboardActivityCount(){
+  return (state.focusSessions||[]).filter(function(s){return s.date===wwLocalDateISO(new Date())}).length;
+}
+function wwDashboardUpcoming(){
+  var now=Date.now(), out=[];
+  (state.exams||[]).forEach(function(e){var d=e.date||e.exam_date||e.datetime;if(!d)return;var ts=new Date(d).getTime();if(ts>=now)out.push({kind:'exam',title:e.title||e.name||'Examen',date:d,ts:ts})});
+  return out.sort(function(a,b){return a.ts-b.ts}).slice(0,3);
+}
+function renderPomodoro(){
+  var total=Math.max(0,Number(pomodoro.remaining)||0),m=Math.floor(total/60),sec=total%60;
+  var display=String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  var fc=wwFocusContext(),label=wwFocusContextLabel(fc)||'Aucune activité associée';
+  var phase=pomodoro.isBreak?'PAUSE':'FOCUS';
+  var running=pomodoro.isRunning;
+  return '<div class="pomodoro-container ww-pomodoro-v2">'+
+    '<div class="ww-pomo-head"><div><div class="card-title">⏱️ Minuteur</div><div class="ww-pomo-phase">'+phase+' · '+(running?'EN COURS':'PRÊT')+'</div></div><span class="ww-pomo-duration">'+pomodoro.workTime+' / '+pomodoro.breakTime+' min</span></div>'+
+    '<div class="ww-pomo-context"><span>🎯</span><div><small>Activité associée</small><strong>'+wwEscapeHTML(label)+'</strong></div></div>'+
+    '<div class="timer-display" aria-live="polite">'+display+'</div>'+
+    '<div class="timer-controls">'+
+      (!running&&!pomodoro.isBreak?'<button type="button" class="btn-start" data-pomo-start>▶ Démarrer</button>':'')+
+      (running?'<button type="button" class="btn-start running" data-pomo-pause>⏸ Pause</button>':'')+
+      '<button type="button" class="btn-stop" data-pomo-stop>■ Arrêter</button>'+ 
+      '<button type="button" class="btn-reset" data-pomo-reset>↺ Réinitialiser</button>'+ 
+    '</div>'+ 
+    '<details class="ww-pomo-settings"><summary>⚙️ Réglages du minuteur</summary><div class="ww-pomo-settings-grid">'+
+      '<label>Focus (min)<input id="pomo-work-min" type="number" min="1" max="600" value="'+pomodoro.workTime+'"></label>'+ 
+      '<label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" value="'+pomodoro.breakTime+'"></label>'+ 
+      '<label class="ww-pomo-check"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> Mode libre</label>'+ 
+      '<button type="button" class="btn-outline btn-small" data-pomo-apply>Appliquer</button>'+ 
+    '</div></details>'+ 
+  '</div>';
+}
 function renderDashboard(){
-  var tt=state.topics.length;
-  var pr=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
-  var ov=tt?Math.round((pr/tt)*100):0;
-  var tasks=getTasksForToday();
-  var mins=Math.floor(pomodoro.remaining/60),secs=pomodoro.remaining%60;
-  var ts=(mins<10?'0':'')+mins+':'+(secs<10?'0':'')+secs;
-  var sc=getScheduleStatus();
-  var rev=computeSmartRevision();
-  var hasRev=Object.keys(rev).length>0;
-  var xpL=Math.floor(state.xp/100)+1,xpI=state.xp%100;
-  var lg=langTotalDone('de')+langTotalDone('en')+langTotalDone('es');
-  var pg=progTotalDone();
-  var errDue=getErrorsDueToday().filter(function(e){var t=e.topic_id&&state.topics.find(function(x){return x.id===e.topic_id});return t?wwTopicActive(t):(e.subject_id?wwSubjectActive(e.subject_id):false)}).length;
-  return '<div class="card" style="padding:14px;"><div class="card-title" style="margin-bottom:8px;">📋 Emploi du temps</div><div class="schedule-status-container">'+
-      (sc.currentClass?'<div class="schedule-status-item"><div class="status-icon">🔴</div><div><div class="status-text">En cours : '+sc.currentClass.subject+'</div><div class="status-sub">'+sc.currentClass.start+' - '+sc.currentClass.end+(sc.currentClass.room?' · Salle '+sc.currentClass.room:'')+'</div></div></div>':'')+
-      (sc.nextClass?'<div class="schedule-status-item"><div class="status-icon">⏳</div><div><div class="status-text">Prochain : '+sc.nextClass.subject+'</div><div class="status-sub">À '+sc.nextClass.start+(sc.nextClass.room?' · Salle '+sc.nextClass.room:'')+'</div></div></div>':'<div class="schedule-status-item"><div class="status-icon">☕</div><div><div class="status-text">Aucun cours</div></div></div>')+
-    '</div></div>'+
-    renderDailyMission()+
-    (window.WWAdaptiveDailyOS?window.WWAdaptiveDailyOS.renderHTML():(window.WWWhiteWolfIntelligence?window.WWWhiteWolfIntelligence.renderHTML():''))+
-    renderIntelligenceBrief()+
-    renderDashboardExams()+
-    (errDue>0?'<div class="err-widget" data-route="stats" data-stats-tab="errors"><div class="ew-top"><div class="ew-icon">⚠️</div><div class="ew-title">Erreurs à revoir</div><div class="ew-count">'+errDue+'</div></div><div class="ew-sub">Clique pour réviser</div></div>':'')+
-    '<div class="card" style="background:linear-gradient(135deg,#16222e,#111a24);"><div class="flex-between"><div><div style="font-size:12px;color:#8ba2c0;">XP</div><div style="font-size:26px;font-weight:700;color:#e8cc6a;">'+state.xp+'</div></div><div style="text-align:right;"><div style="font-size:12px;color:#8ba2c0;">NIVEAU '+xpL+'</div><div style="font-size:13px;color:#8fb3e6;">'+xpI+'/100</div></div></div><div class="progress-bar" style="margin-top:10px;"><div class="fill" style="width:'+xpI+'%;background:linear-gradient(90deg,#4b7bec,#e8cc6a);"></div></div></div>'+
-    '<div class="card"><div class="card-title">Progression <span class="badge">'+ov+'%</span></div><div class="progress-bar"><div class="fill" style="width:'+ov+'%;"></div></div><div class="flex-between text-small" style="margin-top:6px;"><span>'+pr+'/'+tt+' chapitres</span><span>'+lg+' leçons · '+pg+' prog</span></div></div>'+
-    '<div class="card"><div class="card-title">📋 Tâches du jour <span class="badge">'+new Date().toLocaleDateString('fr-FR')+'</span></div>'+
-      (tasks.length?tasks.map(function(t){return wwTaskRow(t,true)}).join(''):'<div class="text-muted text-small">Aucune tâche.</div>')+
-    '</div>'+
-    (hasRev&&state.settings.showSmartRevision?'<div class="card"><div class="card-title">🧠 À réviser <span class="badge">'+Object.keys(rev).reduce(function(a,k){return a+rev[k].length},0)+'</span></div>'+Object.keys(rev).map(function(sid){var items=rev[sid];var s=state.subjects.find(function(x){return x.id===sid});return '<div class="revision-group"><div class="revision-group-header" data-group-toggle="'+sid+'"><div><span class="group-title">📖 '+(s?s.name:'Matière')+'</span><span class="group-meta"> • '+items.length+'</span></div><span class="group-meta">▼</span></div><div class="revision-group-body" id="body-'+sid+'">'+items.map(function(r){return '<div class="revision-item"><div><div class="name">'+r.title+'</div><div class="sub">📅 '+r.daysSinceLastStudy+' jours · Niveau '+r.level+'/4</div></div><button class="btn-small btn-outline" data-session-topic="'+r.topicId+'">🔄</button></div>'}).join('')+'</div></div>'}).join('')+'</div>':'')+
-    renderAdaptiveRevisionCard()+renderFocusCockpit()+    '<div class="card"><div class="card-title">⏱️ Pomodoro <span class="badge">'+(pomodoro.freeMode?'⏱️ Minuteur':(pomodoro.isBreak?'☕ Pause':'📖 Travail'))+'</span></div><div class="pomodoro-container"><div class="timer-display">'+ts+'</div><div class="timer-controls">'+(!pomodoro.isRunning?'<button class="btn-start" data-pomo-start>▶️ Démarrer</button>':'<button class="btn-start running" data-pomo-pause>⏸️ Pause</button>')+'<button class="btn-stop" data-pomo-stop>⏹️ Arrêter</button><button class="btn-reset" data-pomo-reset>↺ Reset</button></div><div class="pomo-settings"><div class="pomo-settings-title">Réglage du temps</div><div class="pomo-duration-grid"><label>Travail (min)<input id="pomo-work-min" type="number" min="1" max="600" step="1" value="'+pomodoro.workTime+'"></label><label>Pause (min)<input id="pomo-break-min" type="number" min="0" max="600" step="1" value="'+pomodoro.breakTime+'"></label></div><label class="pomo-free-toggle"><input id="pomo-free-mode" type="checkbox" '+(pomodoro.freeMode?'checked':'')+'> <span>Mode minuteur libre — ne bascule pas automatiquement</span></label><button class="btn-pomo-apply" data-pomo-apply>Appliquer</button></div></div></div>'+
+  var todayM=wwDashboardTodayMinutes(), tasks=getTasksForToday(), sc=getScheduleStatus(), rev=computeSmartRevision();
+  var revCount=Object.keys(rev).reduce(function(a,k){return a+rev[k].length},0);
+  var totalTopics=state.topics.length, doneTopics=state.topics.filter(function(t){return getProgress(t.id).level>0}).length;
+  var progress=totalTopics?Math.round(doneTopics/totalTopics*100):0;
+  var upcoming=wwDashboardUpcoming(), next=sc.nextClass;
+  var current=sc.currentClass;
+  var activeFocus=state.focusContext&&(state.focusContext.topicId||state.focusContext.taskId||state.focusContext.title);
+  return '<div class="ww-dashboard-v2">'+
+    '<section class="ww-dash-hero card"><div><div class="ww-dash-kicker">WHITE WOLF OS</div><h2>Bonjour, Wolf.</h2><p>Voici uniquement ce qui mérite ton attention maintenant.</p></div><div class="ww-dash-progress"><strong>'+progress+'%</strong><span>progression</span></div></section>'+
+    (typeof renderDailyMission==='function'?renderDailyMission():'')+(window.WWAdaptiveDailyOS&&window.WWAdaptiveDailyOS.renderHTML?window.WWAdaptiveDailyOS.renderHTML():'')+(typeof renderAdaptiveRevisionCard==='function'?renderAdaptiveRevisionCard():'')+renderDashboardExams()+ '<section class="ww-dash-grid">'+
+      '<div class="card ww-dash-stat"><span>⏱️ Étude aujourd’hui</span><strong>'+todayM+' min</strong><small>'+wwDashboardActivityCount()+' activité(s)</small></div>'+ 
+      '<div class="card ww-dash-stat"><span>📝 Tâches aujourd’hui</span><strong>'+tasks.filter(function(t){return !t.isDone}).length+'</strong><small>'+tasks.filter(function(t){return t.isDone}).length+' terminée(s)</small></div>'+ 
+      '<div class="card ww-dash-stat"><span>🔥 Streak</span><strong>'+Number(state.studyStreak||0)+' j</strong><small>régularité</small></div>'+ 
+    '</section>'+
+    '<section class="ww-dash-main">'+
+      '<div class="card ww-dash-priority"><div class="ww-dash-section-head"><div><h3>🎯 Maintenant</h3><small>La prochaine action utile</small></div><button class="btn-outline btn-small" data-route="planning">Planning</button></div>'+
+        (current?'<div class="ww-dash-now"><b>🔴 En cours</b><span>'+wwEscapeHTML(current.subject||'Cours')+' · '+current.start+'–'+current.end+(current.room?' · '+wwEscapeHTML(current.room):'')+'</span></div>':'')+
+        (next?'<div class="ww-dash-now"><b>⏳ Prochain cours</b><span>'+wwEscapeHTML(next.subject||'Cours')+' · '+next.start+(next.room?' · '+wwEscapeHTML(next.room):'')+'</span></div>':'')+
+        (tasks.filter(function(t){return !t.isDone}).slice(0,2).map(function(t){return '<div class="ww-dash-task">'+wwTaskRow(t,true)+'</div>'}).join('')||(!current&&!next?'<div class="text-muted text-small">Aucune contrainte immédiate.</div>':''))+
+      '</div>'+ 
+      '<div class="card ww-dash-intel"><div class="ww-dash-section-head"><div><h3>🧠 Intelligence</h3><small>Résumé du moteur</small></div><button class="btn-outline btn-small" data-route="planning">Voir</button></div>'+renderIntelligenceBrief()+
+        (revCount?'<div class="ww-dash-chip">🔄 '+revCount+' révision(s) à considérer</div>':'<div class="ww-dash-chip">✓ Pas de révision urgente détectée</div>')+
+      '</div>'+ 
+    '</section>'+
+    '<section class="ww-dash-secondary">'+
+      '<div class="card"><div class="ww-dash-section-head"><div><h3>🎯 Focus</h3><small>'+ (activeFocus?'Activité associée au minuteur':'Aucune activité sélectionnée')+'</small></div></div>'+renderFocusCockpit()+renderPomodoro()+'</div>'+ 
+      '<div class="card"><div class="ww-dash-section-head"><div><h3>📚 Progression</h3><small>'+doneTopics+' / '+totalTopics+' chapitres commencés</small></div><button class="btn-outline btn-small" data-route="master">Master</button></div><div class="progress-bar"><div class="fill" style="width:'+progress+'%;"></div></div></div>'+ 
+    '</section>'+ 
+    (upcoming.length?'<section class="card"><div class="ww-dash-section-head"><div><h3>📅 À venir</h3><small>Les prochaines échéances</small></div><button class="btn-outline btn-small" data-route="stats">Stats</button></div>'+upcoming.map(function(x){return '<div class="ww-dash-upcoming"><span>📝</span><div><b>'+wwEscapeHTML(x.title)+'</b><small>'+wwEscapeHTML(x.date)+'</small></div></div>'}).join('')+'</section>':'')+
   '</div>';
 }
 
@@ -1139,7 +1113,7 @@ function renderLesson(){
   var lesson=null;for(var i=0;i<lv.lessons.length;i++){if(lv.lessons[i].num===state.lessonNum){lesson=lv.lessons[i];break}}
   if(!lesson)return '<div class="card">الدرس غير موجود</div>';
   var done=langIsDone(L.id,state.levelKey,lesson.num);
-  return '<button class="back-btn" data-route="language" data-lang="'+L.id+'">← رجوع إلى '+state.levelKey+'</button>'+
+  return '<button class="back-btn" data-route="language" data-lang-id="'+L.id+'">← رجوع إلى '+state.levelKey+'</button>'+
     '<div class="lesson-detail"><div class="lbl">الدرس '+lesson.num+' · '+state.levelKey+' · '+L.name+'</div><h3>'+lesson.title+'</h3><div class="lsub">'+lesson.sub+'</div><div class="what-learn"><h4>💡 ما ستتعلمه:</h4><ul>'+lesson.learn.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div>'+
     '<div style="font-size:13px;color:#8ba2c0;margin-bottom:8px;">🎥 فيديو موصى به:</div>'+
     '<a class="video-link" href="'+lesson.video.url+'" target="_blank"><div class="vid-icon">▶️</div><div class="vid-info"><div class="t">'+lesson.video.title+'</div><div class="s">'+lesson.video.channel+'</div></div><div class="vid-arrow">→</div></a>'+
@@ -1154,7 +1128,7 @@ function renderFlashcards(){
   var header='<div class="fc-header"><div class="fc-top"><div class="fc-icon">🃏</div><div class="fc-title"><h2>Flashcards</h2><div class="fc-sub">'+L.flag+' '+L.name+' · '+L.nameAr+'</div></div></div><div class="fc-stats"><div class="fc-stat total"><div class="fs-num">'+cards.length+'</div><div class="fs-lbl">Total</div></div><div class="fc-stat due"><div class="fs-num">'+due.length+'</div><div class="fs-lbl">À réviser</div></div><div class="fc-stat mastered"><div class="fs-num">'+mastered.length+'</div><div class="fs-lbl">Maîtrisées</div></div></div></div>';
   var actions='<div class="fc-actions"><button class="fc-action-btn primary" data-start-fc-session '+(due.length===0?'disabled':'')+'>▶️ Réviser ('+due.length+')</button><button class="fc-action-btn secondary" data-start-smart-fc '+(due.length===0?'disabled':'')+'>🧠 Smart Review ('+Math.min(due.length,12)+')</button><button class="fc-action-btn secondary" data-add-fc-manual>➕ Ajouter</button></div>'+'<div class="ww-sr2-card"><div class="ww-sr2-head"><div><div class="ww-sr2-title">🧠 Smart Review 2.0</div><div class="ww-sr2-sub">Priorise automatiquement les cartes qui ont le plus besoin de toi.</div></div><span class="ww-sr2-badge">LIVE</span></div><div class="ww-sr2-grid"><div><b>'+sr2.due+'</b><span>à réviser</span></div><div><b>'+sr2.high+'</b><span>priorité haute</span></div><div><b>'+sr2.errors+'</b><span>erreurs dues</span></div><div><b>'+(sr2.exam?sr2.examDays+'j':'—')+'</b><span>prochain examen</span></div></div><div class="ww-sr2-note">'+(sr2.exam&&sr2.examDays<=7?'🎯 Examen proche : urgence renforcée.':'⚙️ Score basé sur retard, niveau, répétitions, récence et pression d’examen.')+'</div></div>';
   var list='';if(cards.length===0){list='<div class="fc-empty"><div class="fce-icon">🃏</div><div class="fce-text">Aucune carte</div></div>'}else{list='<div class="card"><div class="card-title">📋 Toutes les cartes <span class="badge">'+cards.length+'</span></div><div class="fc-list">'+cards.map(function(c){var info=getCardReviewInfo(L.id,c.id);var statusEmoji=info.level>=3?'🟢':(info.level>=1?'🟡':'🔴');var nextDate=info.nextReviewAt?new Date(info.nextReviewAt).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):(info.nextReview?wwDateAtLocalMidnight(info.nextReview).toLocaleDateString('fr-FR'):'maintenant');var sr=wwSR2CardScore(L.id,c);var pr=sr>=65?'🔥 Haute':(sr>=40?'🟠 Moyenne':'🟢 Faible');return '<div class="fc-list-item"><div class="fli-content"><div class="fli-q">'+statusEmoji+' '+c.question+'</div><div class="fli-a">'+c.answer+'</div><div class="fli-meta">Niveau '+info.level+' · Prochaine: '+nextDate+' · '+pr+' ('+sr+')</div></div><button class="btn-small btn-outline" data-delete-fc="'+c.id+'">🗑️</button></div>'}).join('')+'</div></div>'}
-  return '<button class="back-btn" data-route="language" data-lang="'+L.id+'">← رجوع</button>'+header+actions+list;
+  return '<button class="back-btn" data-route="language" data-lang-id="'+L.id+'">← رجوع</button>'+header+actions+list;
 }
 
 function renderFcSession(L){
@@ -1173,15 +1147,69 @@ function wwTaskStatus(t){return window.WWTaskEngine?WWTaskEngine.taskStatus(t,ww
 function wwTaskStatusClass(t){return window.WWTaskEngine?WWTaskEngine.taskStatusClass(t,wwLocalDateISO(new Date()),new Date()):'a-faire'}
 function wwTaskDeadlineInfo(t){if(!t||!t.deadlineTime)return '';var date=t.date||wwLocalDateISO(new Date()), now=new Date(), dl=new Date(date+'T'+t.deadlineTime+':00');var diff=dl-now;if(t.isDone)return '<span class="ww-deadline done">✓ Terminé</span>';if(diff<0)return '<span class="ww-deadline overdue">🔴 Dépassée</span>';var m=Math.ceil(diff/60000);if(date===wwLocalDateISO(now)&&m<=60)return '<span class="ww-deadline urgent">🔴 '+m+' min restantes</span>';if(date===wwLocalDateISO(now))return '<span class="ww-deadline today">🟠 Aujourd’hui · '+t.deadlineTime+'</span>';return '<span class="ww-deadline future">🟢 '+new Date(date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' · '+t.deadlineTime+'</span>'}
 function wwTaskRow(t,compact){var st=wwTaskStatus(t),sc=wwTaskStatusClass(t);return '<div class="task-item ww-task-card '+(t.isDone?'is-done':'')+'"><div class="task-left"><div class="task-text '+(t.isDone?'task-done':'')+'">'+wwEscapeHTML(t.text)+'</div><div class="task-meta"><span class="ww-task-status '+sc+'">'+(st==='Terminée'?'✓ ':st==='En retard'?'⚠️ ':st==='En cours'?'◐ ':'○ ')+st+'</span> · '+(t.estimatedMinutes?('⏱️ '+t.estimatedMinutes+' min · '):'')+t.priority+' '+wwTaskDeadlineInfo(t)+'</div></div><div class="task-right"><span class="task-priority '+t.priority+'">'+t.priority+'</span>'+(t.isDone?'<button class="btn-small btn-outline" data-task-undone="'+t.id+'">↩️</button>':(t.status==='in_progress'?'<button class="btn-small btn-outline" data-task-stop="'+t.id+'">⏸️</button>':'<button class="btn-small btn-outline" data-task-start="'+t.id+'">▶️</button>')+'<button class="btn-small btn-outline" data-task-done="'+t.id+'">✅</button>')+'<button class="btn-small btn-outline" data-task-delete="'+t.id+'">🗑️</button></div></div>'}
-function renderPlanning(){
-  var days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-  var keys=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-  var schedule=Object.assign({},DEFAULT_SCHEDULE,state.customSchedule);
-  var todayTasks=state.tasks.filter(function(t){return t.date===wwLocalDateISO(new Date())});
-  if(state.isEditingPlanning){return '<div><div class="flex-between" style="margin-bottom:16px;"><h2 style="font-size:22px;">📅 Modifier le Planning</h2><span class="text-small text-muted">Source de vérité</span></div><div class="card">'+keys.map(function(k,i){return '<div class="planning-day-edit"><div class="day-header"><span>'+days[i]+'</span><button class="btn-small btn-outline" type="button" data-reset-day="'+k+'" aria-label="Réinitialiser '+days[i]+'">↺</button></div><textarea id="planning-input-'+k+'" rows="3" spellcheck="true" aria-label="Planning '+days[i]+'" placeholder="Ajoute les éléments de ta journée, un par ligne…">'+wwEscapeHTML(schedule[k]||'')+'</textarea></div>'}).join('')+'<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;"><button class="btn-primary" type="button" data-save-planning>💾 Enregistrer</button><button class="btn-outline" type="button" data-cancel-planning>Annuler</button></div></div></div>'}
-  return '<div><div class="flex-between" style="margin-bottom:16px;"><h2 style="font-size:22px;">📅 Planning</h2><button class="btn-primary btn-small" data-edit-planning>✏️ Modifier</button></div><div class="card"><div class="card-title">Planning hebdo</div>'+keys.map(function(k,i){return '<div class="stat-row"><span style="font-weight:500;min-width:80px;">'+days[i]+'</span><span class="text-small">'+wwEscapeHTML(schedule[k]||'—')+'</span></div>'}).join('')+'</div><div class="card"><div class="card-title">📋 Tâches <span class="badge">'+new Date().toLocaleDateString('fr-FR')+'</span></div>'+(todayTasks.length?todayTasks.map(function(t){return wwTaskRow(t,false)}).join(''):'<div class="text-muted text-small">Aucune tâche.</div>')+'<button class="btn-primary btn-small mt-8" data-add-task>➕ Ajouter</button></div><div class="card"><div class="card-title">📝 Examens <span class="badge">'+state.exams.length+'</span></div>'+(state.exams.length?state.exams.map(function(e){var dLeft=Math.ceil((new Date(e.date)-new Date())/86400000);var cls=dLeft<=1?'urgent':dLeft<=3?'soon':'';var label=dLeft===0?'Aujourd\'hui':dLeft===1?'Demain':'Dans '+dLeft+'j';return '<div class="exam-item"><div class="exam-left"><div class="exam-title">'+e.title+'</div><div class="exam-date">📅 '+new Date(e.date).toLocaleDateString('fr-FR')+' '+(e.time?'à '+e.time:'')+'</div></div><div class="exam-right"><span class="exam-badge '+cls+'">'+label+'</span><button class="btn-small btn-outline" data-exam-prep="'+e.id+'">🎯</button><button class="btn-small btn-outline" data-delete-exam="'+e.id+'">🗑️</button></div></div>'}).join(''):'<div class="text-muted text-small">Aucun examen.</div>')+'<button class="btn-primary btn-small mt-8" data-add-exam>➕ Ajouter</button></div>'+(window.WWPlanningIntelligence?window.WWPlanningIntelligence.renderHTML():'')+'</div>';
+function wwPlanningView(){
+  try{return localStorage.getItem('wwPlanningView')||'today'}catch(e){return 'today'}
 }
-
+function wwPlanningDayKey(offset){
+  var d=new Date();d.setDate(d.getDate()+Number(offset||0));
+  var keys=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  return keys[d.getDay()];
+}
+function wwPlanningDayLabel(offset){
+  var d=new Date();d.setDate(d.getDate()+Number(offset||0));
+  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'short'});
+}
+function wwPlanningItemsForDay(key){
+  var schedule=Object.assign({},DEFAULT_SCHEDULE,state.customSchedule||{}),raw=String(schedule[key]||'').trim();
+  if(!raw)return [];
+  return raw.split(/\s*(?:\+|•|;|\n)\s*/).map(function(x){return x.trim()}).filter(Boolean).map(function(text,i){
+    var m=text.match(/^(\d{1,2}:\d{2})\s*(?:-|–|—|→|à)\s*(\d{1,2}:\d{2})\s*(.*)$/);
+    return {id:'p_'+key+'_'+i,text:m?(m[3]||'Bloc planning'):text,start:m?m[1]:null,end:m?m[2]:null,timed:!!m};
+  });
+}
+function wwPlanningTasksForDay(offset){
+  var d=new Date();d.setDate(d.getDate()+Number(offset||0));var iso=wwLocalDateISO(d);
+  return (state.tasks||[]).filter(function(t){return String(t.date||'')===iso}).sort(function(a,b){
+    var aa=a.time||a.start_time||a.startAt||'99:99',bb=b.time||b.start_time||b.startAt||'99:99';return String(aa).localeCompare(String(bb));
+  });
+}
+function wwPlanningTaskLine(t){
+  var done=t.completed||t.status==='completed'||t.done, time=t.time||t.start_time||'';
+  return '<div class="ww-plan-task '+(done?'done':'')+'"><span class="ww-plan-task-icon">'+(done?'✓':'□')+'</span><div><strong>'+wwEscapeHTML(t.text||t.title||'Tâche')+'</strong><small>'+(time?wwEscapeHTML(time)+' · ':'')+(t.estimatedMinutes||t.duration?wwEscapeHTML(String(t.estimatedMinutes||t.duration))+' min':'Sans durée')+'</small></div></div>';
+}
+function wwPlanningDayCard(offset,compact){
+  var key=wwPlanningDayKey(offset),items=wwPlanningItemsForDay(key),tasks=wwPlanningTasksForDay(offset),label=wwPlanningDayLabel(offset),today=offset===0;
+  var timed=items.filter(function(x){return x.timed});
+  var body=items.map(function(x){return '<div class="ww-plan-item '+(x.timed?'timed':'')+'"><span>📌</span><div><strong>'+wwEscapeHTML(x.text)+'</strong>'+(x.timed?'<small>'+x.start+' → '+x.end+'</small>':'')+'</div></div>'}).join('');
+  if(tasks.length)body+='<div class="ww-plan-divider"><span>Tasks</span></div>'+tasks.map(wwPlanningTaskLine).join('');
+  if(!body)body='<div class="ww-plan-empty">Aucun élément prévu.</div>';
+  return '<section class="ww-plan-day '+(today?'today':'')+' '+(compact?'compact':'')+'"><div class="ww-plan-day-head"><div><span class="ww-plan-day-kicker">'+(today?'AUJOURD\'HUI':'JOUR')+'</span><h3>'+wwEscapeHTML(label)+'</h3></div><span class="ww-plan-count">'+(items.length+tasks.length)+'</span></div><div class="ww-plan-day-body">'+body+'</div></section>';
+}
+function wwPlanningTimeline(){
+  var offsets=[0,1],rows=[];
+  offsets.forEach(function(off){
+    var key=wwPlanningDayKey(off),items=wwPlanningItemsForDay(key).filter(function(x){return x.timed});
+    items.forEach(function(x){rows.push({offset:off,start:x.start,end:x.end,title:x.text,type:'planning'})});
+    wwPlanningTasksForDay(off).forEach(function(t){var st=t.time||t.start_time;if(st)rows.push({offset:off,start:st,end:t.end_time||t.deadline_time||'',title:t.text||t.title,type:'task'})});
+  });
+  rows.sort(function(a,b){return a.offset-b.offset||String(a.start).localeCompare(String(b.start))});
+  if(!rows.length)return '<div class="ww-plan-empty">Aucun élément horodaté. Ajoute une heure dans le Planning ou dans une tâche.</div>';
+  return rows.map(function(r){return '<div class="ww-plan-timeline-row"><div class="ww-plan-time"><b>'+r.start+'</b><small>'+wwPlanningDayLabel(r.offset)+'</small></div><div class="ww-plan-line"></div><div class="ww-plan-timeline-card '+r.type+'"><span>'+(r.type==='task'?'📝':'📌')+'</span><div><strong>'+wwEscapeHTML(r.title)+'</strong><small>'+(r.end?r.start+' → '+r.end:'À partir de '+r.start)+'</small></div></div></div>'}).join('');
+}
+function renderPlanning(){
+  var view=wwPlanningView(),views=[['today','Aujourd’hui','🎯'],['tomorrow','Demain','➡️'],['week','Semaine','🗓️'],['timeline','Timeline','⏱️']];
+  var offset=view==='tomorrow'?1:0;
+  if(state.isEditingPlanning){
+    var days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'],keys=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'],schedule=Object.assign({},DEFAULT_SCHEDULE,state.customSchedule||{});
+    return '<div><div class="ww-plan-header"><div><span class="ww-plan-kicker">SOURCE DE VÉRITÉ</span><h2>📅 Modifier le Planning</h2><p>Garde les blocs importants ici. Les détails d’exécution vivent dans Tasks.</p></div></div><div class="card">'+keys.map(function(k,i){return '<div class="planning-day-edit"><div class="day-header"><span>'+days[i]+'</span><button class="btn-small btn-outline" type="button" data-reset-day="'+k+'" aria-label="Réinitialiser '+days[i]+'">↺</button></div><textarea id="planning-input-'+k+'" rows="3" spellcheck="true" aria-label="Planning '+days[i]+'" placeholder="Ajoute les éléments de ta journée, un par ligne…">'+wwEscapeHTML(schedule[k]||'')+'</textarea></div>'}).join('')+'<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;"><button class="btn-primary" type="button" data-save-planning>💾 Enregistrer</button><button class="btn-outline" type="button" data-cancel-planning>Annuler</button></div></div></div>';
+  }
+  var controls=views.map(function(v){return '<button class="ww-plan-view '+(view===v[0]?'active':'')+'" data-planning-view="'+v[0]+'">'+v[2]+' '+v[1]+'</button>'}).join('');
+  var main=view==='timeline'?'<div class="ww-plan-timeline">'+wwPlanningTimeline()+'</div>':view==='week'?'<div class="ww-plan-week">'+[0,1,2,3,4,5,6].map(function(i){return wwPlanningDayCard(i,true)}).join('')+'</div>':wwPlanningDayCard(offset,false);
+  var taskCount=wwPlanningTasksForDay(offset).length;
+  var pi=window.WWPlanningIntelligence&&window.WWPlanningIntelligence.summary?window.WWPlanningIntelligence.summary():null;
+  var intelligence=pi?'<div class="ww-plan-intel-strip"><div><span>🧠 Planning Intelligence</span><small>'+(pi.availableNowMinutes||0)+' min disponibles · '+(pi.conflicts||0)+' conflit(s)</small></div><span class="ww-plan-intel-arrow">→</span></div>':'';
+  return '<div class="ww-planning-v2"><div class="ww-plan-header"><div><span class="ww-plan-kicker">ACADEMIC EXECUTION</span><h2>📅 Planning</h2><p>Une vue courte pour savoir quoi faire, sans afficher toute la semaine en permanence.</p></div><button class="btn-primary btn-small" data-edit-planning>✏️ Modifier</button></div><div class="ww-plan-controls">'+controls+'</div><div class="ww-plan-summary"><div><b>'+taskCount+'</b><span>Tasks '+(offset===0?'aujourd’hui':'demain')+'</span></div><div><b>'+(pi?pi.availableNowMinutes:0)+'</b><span>min disponibles</span></div><div><b>'+(pi?pi.conflicts:0)+'</b><span>conflits</span></div></div>'+main+intelligence+(window.WWPlanningIntelligence&&window.WWPlanningIntelligence.renderHTML?window.WWPlanningIntelligence.renderHTML():'')+(window.WWWhiteWolfIntelligence&&window.WWWhiteWolfIntelligence.renderHTML?window.WWWhiteWolfIntelligence.renderHTML():'')+'<div class="ww-plan-secondary"><div class="ww-plan-secondary-head"><span>📝 Examens</span><button class="btn-small btn-outline" data-add-exam>➕</button></div>'+(state.exams.length?state.exams.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date)}).slice(0,3).map(function(e){var dLeft=Math.ceil((new Date(e.date)-new Date())/86400000),cls=dLeft<=1?'urgent':dLeft<=3?'soon':'';var label=dLeft===0?'Aujourd’hui':dLeft===1?'Demain':dLeft<0?'Passé':'Dans '+dLeft+'j';return '<div class="ww-plan-exam"><div><strong>'+wwEscapeHTML(e.title)+'</strong><small>📅 '+new Date(e.date).toLocaleDateString('fr-FR')+(e.time?' · '+e.time:'')+'</small></div><div><span class="exam-badge '+cls+'">'+label+'</span><button class="btn-small btn-outline" data-exam-prep="'+e.id+'">🎯</button></div></div>'}).join(''):'<div class="ww-plan-empty">Aucun examen.</div>')+'</div></div>';
+}
 // ============================================================
 //  STATS (avec onglets + Advanced)
 // ============================================================
@@ -1282,7 +1310,7 @@ function renderAdaptiveRevisionCard(){
   return '<div class="card ww-adaptive-card"><div class="ww-adaptive-head"><div><div class="card-title">🧠 Révision adaptative</div><div class="ww-adaptive-sub">Priorités calculées à partir des erreurs, Mastery, historique et examens.</div></div><span class="ww-adaptive-badge">LIVE 64.2</span></div><div class="ww-adaptive-kpis"><span><b>'+a.total+'</b> priorités</span><span><b>'+a.estimatedMinutes+'</b> min estimées</span><span><b>'+a.errors+'</b> erreurs</span><span><b>'+a.topics+'</b> chapitres</span></div><div class="ww-adaptive-list">'+rows+'</div><button class="btn-primary" data-stats-tab="adaptive" style="width:100%;justify-content:center;margin-top:10px;">🎯 Construire ma session</button></div>';
 }
 function wwStartAdaptiveRevision(){
-  var a=wwAdaptiveSummary(),items=a.queue||[];
+  var a=wwAdaptiveSummary(),items=a.queue||[], qb=(window.WWAdaptiveQuiz&&window.WWAdaptiveQuiz.coverage)?window.WWAdaptiveQuiz.coverage(state.topics||[]):{covered:0,topics:0,questions:0,coveragePercent:0};
   if(!items.length){showToast('Aucune priorité à réviser');return;}
   state.adaptiveRevision={items:JSON.parse(JSON.stringify(items)),currentIdx:0,startedAt:new Date().toISOString(),results:[],quiz:null};
   state.statsTab='adaptive';
@@ -1366,7 +1394,7 @@ function renderAdaptiveRevisionSession(){
 
 function renderAdaptiveRevisionScreen(){
   if(state.adaptiveRevision)return renderAdaptiveRevisionSession();
-  var a=wwAdaptiveSummary(),items=a.queue||[];
+  var a=wwAdaptiveSummary(),items=a.queue||[], qb=(window.WWAdaptiveQuiz&&window.WWAdaptiveQuiz.coverage)?window.WWAdaptiveQuiz.coverage(state.topics||[]):{covered:0,topics:0,questions:0,coveragePercent:0};
   if(!items.length)return '<div class="card ww-adaptive-screen"><div style="font-size:34px;text-align:center;margin-bottom:8px;">🧘</div><h3 style="text-align:center;">Aucune priorité forte</h3><p class="text-muted" style="text-align:center;">Continue à enregistrer tes sessions et tes erreurs : le moteur se recalculera automatiquement.</p></div>';
   var list=items.map(function(x,i){var sub=state.subjects.find(function(s){return s.id===x.subjectId});var icon=x.type==='error'?'⚠️':'📖';var action=x.type==='error'?'<button class="btn-primary btn-small" data-review-error="'+x.errorId+'">🔄 Réviser</button>':'<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn-primary btn-small" data-adaptive-open-topic="'+x.topicId+'">📖 Ouvrir</button><button class="btn-outline btn-small" data-question-bank="'+x.topicId+'">🧪 Questions</button></div>';return '<div class="ww-adaptive-row"><div class="ww-adaptive-rank">'+(i+1)+'</div><div class="ww-adaptive-icon">'+icon+'</div><div class="ww-adaptive-copy"><b>'+wwEscapeHTML(x.title)+'</b><small>'+(sub?wwEscapeHTML(sub.name)+' · ':'')+x.duration+' min · Score '+x.score+'</small><span>'+x.reasons.map(wwEscapeHTML).join(' · ')+'</span></div>'+action+'</div>'}).join('');
   return '<div class="ww-adaptive-screen"><div class="card ww-adaptive-card"><div class="ww-adaptive-head"><div><div class="card-title">🧠 Adaptive Revision Engine</div><div class="ww-adaptive-sub">Plan de révision explicable · le Planning reste inchangé.</div></div><span class="ww-adaptive-badge">64.2</span></div><div class="ww-adaptive-kpis"><span><b>'+a.total+'</b> priorités</span><span><b>'+a.estimatedMinutes+'</b> min estimées</span><span><b>'+a.errors+'</b> erreurs</span><span><b>'+a.topics+'</b> chapitres</span></div><button class="btn-primary" data-start-adaptive-session style="width:100%;justify-content:center;margin-top:12px;">▶️ Démarrer la session adaptative</button></div><div class="card"><div class="card-title">🎯 Ordre de révision proposé</div><div class="ww-adaptive-rows">'+list+'</div></div><div class="card"><div class="card-title">🧪 Banque de questions</div><p class="text-muted text-small">'+qb.covered+'/'+qb.topics+' chapitres couverts · '+qb.questions+' questions locales · couverture '+qb.coveragePercent+'%</p><div class="ww-adaptive-method"><span>🎯 Questions liées aux Topics</span><span>📊 Performance par question</span><span>🔁 Les moins révisées remontent en priorité</span></div></div><div class="card"><div class="card-title">⚙️ Comment le moteur décide</div><div class="ww-adaptive-method"><span>⚠️ Erreurs non maîtrisées</span><span>🧠 Niveau de Mastery</span><span>⏳ Temps depuis la dernière étude</span><span>🎯 Proximité des examens</span><span>📚 Sessions enregistrées</span></div></div></div>';
@@ -1402,11 +1430,11 @@ function renderStatsOverview(){
   var totalProg=PROGRAMMING_TOPICS.length;
   var resStats=getResourcesStats();
   var avgPerDay=getAveragePerDay();
-  var streak=getStudyStreakFromSessions();
+  var streak=getStudyStreakFromSessions();var act=getActivityTotals();
   return '<div>'+
     '<div class="stats-hero"><div class="sh-top"><div class="sh-icon">📊</div><div class="sh-title"><h2>Aperçu global</h2><div class="sh-sub">Toutes tes statistiques</div></div></div><div class="sh-grid"><div class="sh-box"><div class="sh-num" style="color:#e8cc6a;">'+state.xp+'</div><div class="sh-lbl">XP Total</div></div><div class="sh-box"><div class="sh-num" style="color:#e86a6a;">'+state.studyStreak+'</div><div class="sh-lbl">Série actuelle</div></div><div class="sh-box"><div class="sh-num" style="color:#6ae8a5;">'+totalHours+'h</div><div class="sh-lbl">Temps total</div></div></div></div>'+
     '<div class="card"><div class="card-title">Master APCE</div><div class="stat-row"><span class="label">⏱️ Temps</span><span class="value">'+totalHours+' h</span></div><div class="stat-row"><span class="label">📚 Sessions</span><span class="value">'+totalSessions+'</span></div><div class="stat-row"><span class="label">📖 Chapitres</span><span class="value">'+progressed+'/'+totalTopics+'</span></div><div class="stat-row"><span class="label">⏱️ Moyenne/jour</span><span class="value">'+avgPerDay+' min</span></div><div class="stat-row"><span class="label">🔥 Série calculée</span><span class="value">'+streak+' jours</span></div><div class="stat-row"><span class="label">🥇 Forte</span><span class="value">'+(best?best.name:'—')+'</span></div><div class="stat-row"><span class="label">⚠️ Faible</span><span class="value">'+(worst?worst.name:'—')+'</span></div></div>'+
-    '<div class="card"><div class="card-title">💻 Programmation</div><div class="stat-row"><span class="label">Sujets commencés</span><span class="value">'+progDone+'/'+totalProg+'</span></div></div>'+
+    '<div class="card ww-stat-activity"><div class="card-title">⏱️ Activité récente</div><div class="ww-stat-split"><div><b>'+Math.round(act.studyMinutes/60*10)/10+' h</b><small>Étude académique</small></div><div><b>'+Math.round(act.otherMinutes/60*10)/10+' h</b><small>Autres activités</small></div><div><b>'+act.studySessions+'</b><small>Sessions d’étude</small></div></div></div>'+'<div class="card"><div class="card-title">💻 Programmation</div><div class="stat-row"><span class="label">Sujets commencés</span><span class="value">'+progDone+'/'+totalProg+'</span></div></div>'+
     '<div class="card"><div class="card-title">📚 Ressources</div><div class="stat-row"><span class="label">Total</span><span class="value">'+resStats.total+'</span></div><div class="stat-row"><span class="label">⭐ Favoris</span><span class="value">'+resStats.favorites+'</span></div></div>'+
     '<div class="card"><div class="card-title">🌍 Langues</div>'+state.languages.map(function(L){var cur=langCurrentLevel(L.id);var p=langProg(L.id,cur);return '<div style="margin-bottom:12px;"><div class="flex-between text-small"><span>'+L.flag+' '+L.name+' ('+cur+')</span><span>'+p.percent+'%</span></div><div class="progress-bar"><div class="fill" style="width:'+p.percent+'%;"></div></div></div>'}).join('')+'</div>'+
   '</div>';
@@ -1414,7 +1442,7 @@ function renderStatsOverview(){
 
 function renderAdvancedStats(){
   return '<div>'+
-    '<div class="card"><div class="card-title">🔥 Heatmap annuel <span class="badge">365 jours</span></div><div class="heatmap-wrap">'+generateHeatmapSVG()+'</div><div class="heatmap-legend"><span>Moins</span><div class="hl-box hl-0"></div><div class="hl-box hl-1"></div><div class="hl-box hl-2"></div><div class="hl-box hl-3"></div><div class="hl-box hl-4"></div><span>Plus</span></div></div>'+
+    '<div class="card ww-heatmap-card"><div class="card-title">🔥 Heatmap annuel <span class="badge">Étude uniquement</span></div><p class="text-muted text-small">Une journée est marquée uniquement par les sessions d’étude académique enregistrées par Focus.</p><div class="heatmap-wrap">'+generateHeatmapSVG()+'</div><div class="heatmap-legend"><span>Moins</span><div class="hl-box hl-0"></div><div class="hl-box hl-1"></div><div class="hl-box hl-2"></div><div class="hl-box hl-3"></div><div class="hl-box hl-4"></div><span>Plus</span></div></div>'+
     '<div class="objective-card"><div class="obj-header"><div class="obj-title">🎯 Objectif hebdomadaire (7h)</div><div class="obj-percent">'+getWeeklyGoalProgress().percent+'%</div></div><div class="obj-bar"><div class="obj-fill" style="width:'+getWeeklyGoalProgress().percent+'%"></div></div><div class="obj-meta"><span>'+Math.round(getWeeklyGoalProgress().current/60*10)/10+'h cette semaine</span><span>Objectif: 7h</span></div></div>'+
     '<div class="streak-card"><div class="st-fire">🔥</div><div class="st-num">'+getStudyStreakFromSessions()+'</div><div class="st-lbl">Jours consécutifs d\'étude</div><div class="st-sub">Continue comme ça !</div></div>'+
     '<div class="chart-wrap"><div class="chart-title">📊 Étude des 7 derniers jours</div>'+generateBarChartSVG()+'</div>'+
@@ -1471,41 +1499,39 @@ function renderEmploi(){
   var keys=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
   var nowInfo=wwEmploiNow(),next=wwEmploiNext(),upcoming=wwEmploiUpcoming(3),today=wwDayKey(),todayIdx=keys.indexOf(today);
   var mode='week';try{mode=localStorage.getItem('wwEmploiMode')||'week'}catch(e){}
-  var focusDay=(mode==='today'&&todayIdx>=0)?today:null,roomMode=mode==='room';
+  var dayMode=mode.indexOf('day:')===0, focusDay=dayMode?mode.slice(4):(mode==='today'?today:null), roomMode=mode==='room';
+  if(focusDay&&!keys.includes(focusDay)){focusDay=today}
   var visibleKeys=focusDay?[focusDay]:keys;
   var totalWeek=COURSE_SCHEDULE.reduce(function(s,c){return s+wwScheduleDuration(c)},0),weekCount=COURSE_SCHEDULE.length,todayStats=todayIdx>=0?wwEmploiDayStats(today):{classes:[],total:0,gaps:[],occupation:0,span:0};
   var nowMinutes=nowInfo.mins||0;
   var todayCompleted=todayStats.classes.filter(function(c){return wwScheduleToMinutes(c.end)<=nowMinutes}).length;
-  var todayRemaining=todayStats.classes.length-todayCompleted-(nowInfo.type==='current'?1:0); if(todayRemaining<0)todayRemaining=0;
+  var todayRemaining=todayStats.classes.length-todayCompleted-(nowInfo.type==='current'?1:0);if(todayRemaining<0)todayRemaining=0;
   var dateLabel=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long'});
-  var header='<div class="emploi-head"><div class="emploi-kicker">ACADEMIC SCHEDULE</div><div class="flex-between"><div><h2 class="emploi-title">📋 Emploi du temps</h2><div class="emploi-subtitle">Ton rythme réel · cours · pauses · salles</div><div class="emploi-date">'+dateLabel+'</div></div><div class="emploi-live-dot '+(nowInfo.type==='current'?'active':'')+'"></div></div>';
-  var controls='<div class="emploi-controls"><button class="emploi-mode '+(mode==='today'?'active':'')+'" data-emploi-mode="today">📅 Aujourd\'hui</button><button class="emploi-mode '+(mode==='week'?'active':'')+'" data-emploi-mode="week">🗓️ Semaine</button><button class="emploi-mode '+(mode==='room'?'active':'')+'" data-emploi-mode="room">📍 Mode salle</button></div></div>';
+  var header='<div class="emploi-head"><div class="emploi-kicker">ACADEMIC SCHEDULE · V2</div><div class="flex-between"><div><h2 class="emploi-title">📋 Emploi du temps</h2><div class="emploi-subtitle">Vue claire · cours · TD · TP · salles · disponibilité</div><div class="emploi-date">'+dateLabel+'</div></div><div class="emploi-live-dot '+(nowInfo.type==='current'?'active':'')+'"></div></div>';
+  var controls='<div class="emploi-controls emploi-controls-v2"><button class="emploi-mode '+(dayMode||mode==='today'?'active':'')+'" data-emploi-mode="today">📅 Jour</button><button class="emploi-mode '+(mode==='week'?'active':'')+'" data-emploi-mode="week">🗓️ Semaine</button><button class="emploi-mode '+(roomMode?'active':'')+'" data-emploi-mode="room">📍 Salles</button></div>';
+  var dayPicker='';
+  if(mode==='week')dayPicker='<div class="emploi-day-picker">'+keys.map(function(k,i){var st=wwEmploiDayStats(k);return '<button class="emploi-day-chip '+(k===today?'today':'')+'" data-emploi-day="'+k+'"><strong>'+days[i].slice(0,3)+'</strong><span>'+st.classes.length+' · '+wwFormatDuration(st.total)+'</span></button>'}).join('')+'</div>';
   var status='';
   if(nowInfo.type==='current'){var cc=nowInfo.course;status='<div class="emploi-now card"><div class="emploi-now-top"><span class="emploi-status-pill live">🟢 EN COURS</span><span>'+Math.ceil(nowInfo.remaining)+' min restantes</span></div><div class="emploi-now-main"><div><div class="emploi-now-subject">'+cc.subject+'</div><div class="emploi-now-meta">'+cc.start+' – '+cc.end+' · '+cc.type+' · 📍 '+cc.room+'</div></div><div class="emploi-progress-ring" style="--p:'+nowInfo.progress+'%"><span>'+Math.round(nowInfo.progress)+'%</span></div></div><div class="emploi-progress"><div style="width:'+nowInfo.progress+'%"></div></div><div class="emploi-live-clock">🕐 Maintenant · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</div></div>'}
-  else if(next){var nc=next.course;status='<div class="emploi-next card"><div class="emploi-now-top"><span class="emploi-status-pill next">⏳ PROCHAIN</span><span>dans '+wwFormatCountdown(next.until)+'</span></div><div class="emploi-next-main"><div><div class="emploi-now-subject">'+nc.subject+'</div><div class="emploi-now-meta">'+(next.days===0?'Aujourd\'hui':'Dans '+next.days+' jour'+(next.days>1?'s':''))+' · '+nc.start+' – '+nc.end+' · 📍 '+nc.room+'</div></div><div class="emploi-next-arrow">→</div></div></div>'}
-  else{status='<div class="emploi-next card"><div class="emploi-now-top"><span class="emploi-status-pill free">☕ LIBRE</span><span>Aucun cours à venir</span></div><div class="emploi-now-subject">Profite de ton temps libre.</div></div>'}
-  var upcomingHTML=upcoming.length?'<div class="emploi-upcoming"><div class="emploi-mini-head"><span>→ ENSUITE</span><small>3 prochaines séances</small></div>'+upcoming.map(function(x,i){var c=x.course;return '<button class="emploi-upcoming-item" data-emploi-course="'+(c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room).replace(/"/g,'&quot;')+'"><span class="emploi-upcoming-index">'+(i+1)+'</span><span class="emploi-upcoming-main"><strong>'+c.subject+'</strong><small>'+wwEmploiDayName(x.day)+' · '+c.start+'–'+c.end+' · '+c.room+'</small></span><span class="emploi-upcoming-count">'+(x.days===0?'Aujourd\'hui':x.days+'j')+'</span></button>'}).join('')+'</div>':'<div class="emploi-upcoming empty"><div class="emploi-mini-head"><span>✓ PROGRAMME</span><small>aucune séance à venir</small></div></div>';
-  var last=todayStats.classes.filter(function(c){return wwScheduleToMinutes(c.end)<=nowMinutes}).slice(-1)[0];
-  var lastHTML=last?'<div class="emploi-last"><span>✓ DERNIÈRE SÉANCE</span><strong>'+last.subject+'</strong><small>'+last.start+' – '+last.end+' · '+last.room+'</small></div>':'';
+  else if(next){var nc=next.course;status='<div class="emploi-next card"><div class="emploi-now-top"><span class="emploi-status-pill next">⏳ PROCHAIN</span><span>dans '+wwFormatCountdown(next.until)+'</span></div><div class="emploi-next-main"><div><div class="emploi-now-subject">'+nc.subject+'</div><div class="emploi-now-meta">'+(next.days===0?'Aujourd’hui':'Dans '+next.days+' jour'+(next.days>1?'s':''))+' · '+nc.start+' – '+nc.end+' · 📍 '+nc.room+'</div></div><div class="emploi-next-arrow">→</div></div></div>'}
+  else status='<div class="emploi-next card"><div class="emploi-now-top"><span class="emploi-status-pill free">☕ LIBRE</span><span>Aucun cours à venir</span></div><div class="emploi-now-subject">Profite de ton temps libre.</div></div>';
+  var upcomingHTML=upcoming.length?'<div class="emploi-upcoming"><div class="emploi-mini-head"><span>→ ENSUITE</span><small>3 prochaines séances</small></div>'+upcoming.map(function(x,i){var c=x.course;return '<button class="emploi-upcoming-item" data-emploi-course="'+(c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room).replace(/"/g,'&quot;')+'"><span class="emploi-upcoming-index">'+(i+1)+'</span><span class="emploi-upcoming-main"><strong>'+c.subject+'</strong><small>'+wwEmploiDayName(x.day)+' · '+c.start+'–'+c.end+' · '+c.room+'</small></span><span class="emploi-upcoming-count">'+(x.days===0?'Aujourd’hui':x.days+'j')+'</span></button>'}).join('')+'</div>':'';
   var freeToday=todayStats.gaps.reduce(function(s,g){return s+g.duration},0);
-  var summary='<div class="emploi-summary"><div class="emploi-stat"><span>📚</span><strong>'+weekCount+'</strong><small>séances semaine</small></div><div class="emploi-stat"><span>⏱️</span><strong>'+wwFormatDuration(totalWeek)+'</strong><small>heures de cours</small></div><div class="emploi-stat"><span>📅</span><strong>'+todayStats.classes.length+'</strong><small>séances aujourd\'hui</small></div><div class="emploi-stat"><span>⏳</span><strong>'+wwFormatDuration(freeToday)+'</strong><small>temps libre</small></div></div>';
+  var summary='<div class="emploi-summary"><div class="emploi-stat"><span>📚</span><strong>'+weekCount+'</strong><small>séances semaine</small></div><div class="emploi-stat"><span>⏱️</span><strong>'+wwFormatDuration(totalWeek)+'</strong><small>cours / semaine</small></div><div class="emploi-stat"><span>📅</span><strong>'+todayStats.classes.length+'</strong><small>séances aujourd’hui</small></div><div class="emploi-stat"><span>⏳</span><strong>'+wwFormatDuration(freeToday)+'</strong><small>libre aujourd’hui</small></div></div>';
   var statusBar='<div class="emploi-statusbar"><div><span>✓</span><strong>'+todayCompleted+'</strong><small>terminées</small></div><div><span>🟢</span><strong>'+(nowInfo.type==='current'?1:0)+'</strong><small>en cours</small></div><div><span>→</span><strong>'+todayRemaining+'</strong><small>restantes</small></div><div><span>◷</span><strong>'+todayStats.occupation+'%</strong><small>occupation</small></div></div>';
-  var cards=visibleKeys.map(function(k){var idx=keys.indexOf(k),stats=wwEmploiDayStats(k),classes=stats.classes;if(roomMode&&k!==today)return '';var isToday=k===today,dayLabel=days[idx],dayTag=isToday?'<span class="emploi-today-tag">AUJOURD\'HUI</span>':'';var body='';
-    if(!classes.length)body='<div class="text-muted text-small">Aucun cours</div>';else{
-      body=classes.map(function(c,i){var before=wwScheduleToMinutes(c.start),after=wwScheduleToMinutes(c.end),subjectId=wwScheduleSubjectId(c.subject),p=wwEmploiSubjectProgress(subjectId),current=nowInfo.type==='current'&&nowInfo.course===c,done=isToday&&after<=nowMinutes,marker='';
-        if(isToday){var prev=i?wwScheduleToMinutes(classes[i-1].end):-1;if(nowMinutes>=before&&nowMinutes<after)marker='<div class="emploi-time-line"><span>🕐 '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</span></div>';else if(i===0&&nowMinutes<before)marker='<div class="emploi-time-line"><span>🕐 '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</span></div>';else if(i>0&&nowMinutes>=prev&&nowMinutes<before)marker='<div class="emploi-time-line"><span>🕐 '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</span></div>'}
-        var detail=''+c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room;
-        var mastery=p!==null?'<span class="emploi-mastery">🎯 '+p+'%</span>':'<span class="emploi-mastery empty">Non liée</span>';
-        return marker+'<button class="emploi-course '+(current?'is-current ':'')+(done?'is-done':'')+'" data-emploi-course="'+detail.replace(/"/g,'&quot;')+'"><div class="emploi-course-left"><div class="emploi-course-title">'+wwEmploiTypeIcon(c.type)+' '+c.subject+'</div><div class="emploi-course-meta"><span class="emploi-type">'+c.type+'</span>'+mastery+(done?'<span class="emploi-done-tag">✓ TERMINÉ</span>':'')+'</div></div><div class="emploi-course-right"><span class="emploi-time">'+c.start+' – '+c.end+'</span><span class="emploi-room">• '+c.room+'</span>'+(current?'<span class="emploi-mini-live">NOW</span>':'')+'</div></button>';
-      }).join('');
-      if(isToday&&nowMinutes>=wwScheduleToMinutes(classes[classes.length-1].end))body+='<div class="emploi-time-line bottom"><span>🕐 '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</span></div>';
-    }
-    var gapInfo=stats.gaps.length?'<div class="emploi-gaps">'+stats.gaps.map(function(g){return '<div class="emploi-gap"><span>⏳ '+g.start+' – '+g.end+'</span><strong>'+wwFormatDuration(g.duration)+'</strong><small>temps libre</small></div>'}).join('')+'</div>':'';
-    return '<section class="emploi-day card '+(isToday?'is-today':'')+'"><div class="emploi-day-head"><div><div class="emploi-day-title">'+dayLabel+' '+dayTag+'</div><div class="emploi-day-meta">'+classes.length+' séance'+(classes.length>1?'s':'')+' · '+wwFormatDuration(stats.total)+' · '+stats.occupation+'% occupation</div></div><div class="emploi-day-total">'+wwFormatDuration(stats.total)+'</div></div>'+body+gapInfo+'</section>';}).join('');
-  if(roomMode){var roomMap={};todayStats.classes.forEach(function(c){(roomMap[c.room]||(roomMap[c.room]=[])).push(c)});cards='<section class="emploi-room-view card"><div class="emploi-room-head"><div><div class="emploi-day-title">📍 Mode salle · '+wwEmploiDayName(today)+'</div><div class="emploi-day-meta">'+Object.keys(roomMap).length+' salle'+(Object.keys(roomMap).length>1?'s':'')+' aujourd\'hui</div></div></div>'+Object.keys(roomMap).map(function(room){return '<div class="emploi-room-group"><div class="emploi-room-title">📍 '+room+' <span>'+roomMap[room].length+'</span></div>'+roomMap[room].map(function(c){return '<button class="emploi-course" data-emploi-course="'+(c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room).replace(/"/g,'&quot;')+'"><div class="emploi-course-left"><div class="emploi-course-title">'+wwEmploiTypeIcon(c.type)+' '+c.subject+'</div><div class="emploi-course-meta"><span class="emploi-type">'+c.type+'</span></div></div><div class="emploi-course-right"><span class="emploi-time">'+c.start+' – '+c.end+'</span></div></button>'}).join('')+'</div>'}).join('')+'</section>'}
-  var footer='<div class="emploi-tip"><span>💡</span><div><strong>Mode intelligent</strong><p>Le planning reste fixe : White Wolf met en évidence le présent, le prochain cours, les séances terminées et tes créneaux libres sans modifier ton emploi.</p></div></div>';
-  return header+controls+status+upcomingHTML+lastHTML+summary+statusBar+cards+footer;
+  var cards='';
+  if(mode==='week'){
+    cards='<section class="emploi-week-v2">'+visibleKeys.map(function(k){var idx=keys.indexOf(k),st=wwEmploiDayStats(k),cls=st.classes;return '<article class="emploi-week-row '+(k===today?'is-today':'')+'"><button class="emploi-week-day" data-emploi-day="'+k+'"><span class="emploi-week-day-name">'+days[idx]+'</span><span class="emploi-week-day-meta">'+cls.length+' séance'+(cls.length>1?'s':'')+' · '+wwFormatDuration(st.total)+'</span><span class="emploi-week-arrow">›</span></button><div class="emploi-week-sessions">'+(cls.length?cls.map(function(c){return '<button class="emploi-week-session" data-emploi-course="'+(c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room).replace(/"/g,'&quot;')+'"><span class="emploi-week-time">'+c.start+'</span><span class="emploi-week-main"><strong>'+wwEmploiTypeIcon(c.type)+' '+c.subject+'</strong><small>'+c.end+' · '+c.type+' · '+c.room+'</small></span></button>'}).join(''):'<span class="emploi-week-empty">Aucun cours</span>')+'</div></article>'}).join('')+'</section>';
+  } else {
+    cards=visibleKeys.map(function(k){var idx=keys.indexOf(k),stats=wwEmploiDayStats(k),classes=stats.classes,isToday=k===today,dayLabel=days[idx],body='';
+      if(!classes.length)body='<div class="text-muted text-small">Aucun cours</div>';else body=classes.map(function(c,i){var before=wwScheduleToMinutes(c.start),after=wwScheduleToMinutes(c.end),subjectId=wwScheduleSubjectId(c.subject),p=wwEmploiSubjectProgress(subjectId),current=nowInfo.type==='current'&&nowInfo.course===c,done=isToday&&after<=nowMinutes,marker='';if(isToday&&nowMinutes>=before&&nowMinutes<after)marker='<div class="emploi-time-line"><span>🕐 '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</span></div>';var detail=c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room,mastery=p!==null?'<span class="emploi-mastery">🎯 '+p+'%</span>':'<span class="emploi-mastery empty">Non liée</span>';return marker+'<button class="emploi-course '+(current?'is-current ':'')+(done?'is-done':'')+'" data-emploi-course="'+detail.replace(/"/g,'&quot;')+'"><div class="emploi-course-left"><div class="emploi-course-title">'+wwEmploiTypeIcon(c.type)+' '+c.subject+'</div><div class="emploi-course-meta"><span class="emploi-type">'+c.type+'</span>'+mastery+(done?'<span class="emploi-done-tag">✓ TERMINÉ</span>':'')+'</div></div><div class="emploi-course-right"><span class="emploi-time">'+c.start+' – '+c.end+'</span><span class="emploi-room">• '+c.room+'</span>'+(current?'<span class="emploi-mini-live">NOW</span>':'')+'</div></button>'}).join('');
+      var gapInfo=stats.gaps.length?'<div class="emploi-gaps">'+stats.gaps.map(function(g){return '<div class="emploi-gap"><span>⏳ '+g.start+' – '+g.end+'</span><strong>'+wwFormatDuration(g.duration)+'</strong><small>temps libre</small></div>'}).join('')+'</div>':'';return '<section class="emploi-day card '+(isToday?'is-today':'')+'"><div class="emploi-day-head"><div><div class="emploi-day-title">'+dayLabel+' '+(isToday?'<span class="emploi-today-tag">AUJOURD’HUI</span>':'')+'</div><div class="emploi-day-meta">'+classes.length+' séance'+(classes.length>1?'s':'')+' · '+wwFormatDuration(stats.total)+' · '+stats.occupation+'% occupation</div></div><div class="emploi-day-total">'+wwFormatDuration(stats.total)+'</div></div>'+body+gapInfo+'</section>';}).join('');
+  }
+  if(roomMode){var roomMap={};todayStats.classes.forEach(function(c){(roomMap[c.room]||(roomMap[c.room]=[])).push(c)});cards='<section class="emploi-room-view card"><div class="emploi-room-head"><div><div class="emploi-day-title">📍 Salles · '+wwEmploiDayName(today)+'</div><div class="emploi-day-meta">'+Object.keys(roomMap).length+' salle'+(Object.keys(roomMap).length>1?'s':'')+' aujourd’hui</div></div></div>'+Object.keys(roomMap).map(function(room){return '<div class="emploi-room-group"><div class="emploi-room-title">📍 '+room+' <span>'+roomMap[room].length+'</span></div>'+roomMap[room].map(function(c){return '<button class="emploi-course" data-emploi-course="'+(c.subject+'|'+c.start+'|'+c.end+'|'+c.type+'|'+c.room).replace(/"/g,'&quot;')+'"><div class="emploi-course-left"><div class="emploi-course-title">'+wwEmploiTypeIcon(c.type)+' '+c.subject+'</div><div class="emploi-course-meta"><span class="emploi-type">'+c.type+'</span></div></div><div class="emploi-course-right"><span class="emploi-time">'+c.start+' – '+c.end+'</span></div></button>'}).join('')+'</div>'}).join('')+'</section>'}
+  var footer='<div class="emploi-tip"><span>💡</span><div><strong>Emploi 2.0</strong><p>La vue Semaine est compacte pour lire rapidement. Appuie sur un jour pour ouvrir sa vue détaillée. Les horaires restent la source fixe utilisée par Planning Intelligence.</p></div></div>';
+  return header+controls+dayPicker+status+upcomingHTML+summary+statusBar+cards+footer;
 }
+
 function renderResources(){
   var all=getAllResources();var stats=getResourcesStats();var filtered=filterResources(all);
   var ri=window.WWResourceIntel?WWResourceIntel.usage():{total:all.length,totalMinutes:0,used:0,recent:0,orphan:0};
@@ -1545,7 +1571,7 @@ function wwDeleteCustomQuestion(topicId,qid){
 function renderModal(){
   var m=state.modal;if(!m)return '';
   if(m.type==='about'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>ℹ️ À propos</h3><div style="text-align:center;padding:10px 0;"><img src="logo.webp" alt="White Wolf Scholar" style="width:min(100%,280px);height:auto;aspect-ratio:1/1;object-fit:contain;margin:0 auto 10px;display:block;border-radius:16px;"><div style="font-weight:600;font-size:22px;">White Wolf Scholar</div><div class="text-muted">Advanced Stats</div><div class="text-muted text-small" style="margin-top:8px;">+ Heatmap · Charts · Analyse avancée</div></div><div class="modal-actions"><button class="btn-primary" data-close-modal>Fermer</button></div></div></div>'}
-  if(m.type==='task'){var today=wwLocalDateISO(new Date());var activeTopics=(state.topics||[]).filter(function(t){return wwTopicActive(t)});var topicOptions='<option value="">Sans chapitre</option>'+activeTopics.map(function(t){var sub=(state.subjects||[]).find(function(x){return x.id===t.subject_id});return '<option value="'+wwEscapeHTML(t.id)+'">'+wwEscapeHTML((sub?sub.name+' · ':'')+t.title)+'</option>'}).join('');var subjectOptions='<option value="">Sans matière</option>'+(state.subjects||[]).filter(function(s){return wwSubjectActive(s.id)}).map(function(s){return '<option value="'+wwEscapeHTML(s.id)+'">'+wwEscapeHTML(s.name)+'</option>'}).join('');return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>➕ Nouvelle tâche</h3><div style="display:grid;gap:12px;"><input id="task-text" placeholder="Description" autofocus><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>📚 Matière</label><select id="task-subject">'+subjectOptions+'</select></div><div><label>📖 Chapitre</label><select id="task-topic">'+topicOptions+'</select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>📅 Date</label><input type="date" id="task-date" value="'+today+'"></div><div><label>▶️ Début (optionnel)</label><input type="time" id="task-time"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>⏰ Heure limite</label><input type="time" id="task-deadline-time"></div><div><label>⏱️ Durée estimée (min)</label><input type="number" id="task-estimated-min" min="5" max="1440" value="30"></div></div><div class="text-muted text-small">La matière/le chapitre relient la tâche au Mastery et au périmètre actif. L’heure limite est respectée par Planning Intelligence. Le Planning hebdo reste inchangé.</div><div><label>🎯 Priorité</label><select id="task-priority"><option value="Basse">🟢 Basse</option><option value="Moyenne" selected>🟡 Moyenne</option><option value="Haute">🔴 Haute</option></select></div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-task>✅ Enregistrer</button></div></div></div>'}
+  if(m.type==='task'){var today=wwLocalDateISO(new Date());var allTopics=(state.topics||[]);var topicOptions='<option value="">Sans chapitre</option>'+allTopics.map(function(t){var sub=(state.subjects||[]).find(function(x){return x.id===t.subject_id});return '<option value="'+wwEscapeHTML(t.id)+'" data-topic-subject="'+wwEscapeHTML(t.subject_id||'')+'">'+wwEscapeHTML((sub?sub.name+' · ':'')+t.title)+'</option>'}).join('');var subjectOptions='<option value="">Sans matière</option>'+(state.subjects||[]).map(function(s){return '<option value="'+wwEscapeHTML(s.id)+'">'+wwEscapeHTML(s.name)+'</option>'}).join('');return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>➕ Nouvelle tâche</h3><div style="display:grid;gap:12px;"><input id="task-text" placeholder="Description" autofocus><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>📚 Matière</label><select id="task-subject">'+subjectOptions+'</select></div><div><label>📖 Chapitre</label><select id="task-topic">'+topicOptions+'</select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>📅 Date</label><input type="date" id="task-date" value="'+today+'"></div><div><label>▶️ Début (optionnel)</label><input type="time" id="task-time"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>⏰ Heure limite</label><input type="time" id="task-deadline-time"></div><div><label>⏱️ Durée estimée (min)</label><input type="number" id="task-estimated-min" min="5" max="1440" value="30"></div></div><div class="text-muted text-small">La matière/le chapitre relient la tâche au Mastery et au périmètre actif. L’heure limite est respectée par Planning Intelligence. Le Planning hebdo reste inchangé.</div><div><label>🎯 Priorité</label><select id="task-priority"><option value="Basse">🟢 Basse</option><option value="Moyenne" selected>🟡 Moyenne</option><option value="Haute">🔴 Haute</option></select></div></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-task>✅ Enregistrer</button></div></div></div>'}
   if(m.type==='exam'){var today2=wwLocalDateISO(new Date());return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📝 Nouvel examen</h3><div style="display:grid;gap:12px;"><input id="exam-title" placeholder="Titre" autofocus><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label>📅 Date</label><input type="date" id="exam-date" value="'+today2+'"></div><div><label>⏰ Heure</label><input type="time" id="exam-time" value="09:00"></div></div><div><label>📚 Matière</label><select id="exam-subject"><option value="">Aucune</option>'+state.subjects.map(function(s){return '<option value="'+wwEscapeHTML(s.id)+'">'+wwEscapeHTML(s.name)+'</option>'}).join('')+'</select></div><div><label>📍 Salle</label><input id="exam-room" placeholder="Ex. P21, ME205, S.C.CHIM..."></div><textarea id="exam-notes" rows="2" placeholder="Notes"></textarea></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-exam>✅ Enregistrer</button></div></div></div>'}
   if(m.type==='examPrep'){return renderExamPreparation(wwFindExam(m.examId))}
   if(m.type==='folder'){return '<div class="modal-overlay"><div class="modal-content"><span class="close-btn" data-close-modal>❌</span><h3>📁 Nouveau dossier</h3><div style="display:grid;gap:12px;"><select id="folder-subject"><option value="">Choisir matière</option>'+state.subjects.map(function(s){return '<option value="'+wwEscapeHTML(s.id)+'">'+wwEscapeHTML(s.name)+'</option>'}).join('')+'</select><input id="folder-name" placeholder="Nom du dossier"></div><div class="modal-actions"><button class="btn-outline" data-close-modal>Annuler</button><button class="btn-primary" data-save-folder>Enregistrer</button></div></div></div>'}
@@ -1582,10 +1608,10 @@ function renderModal(){
 
 function savePomodoroSettings(){try{localStorage.setItem('wwPomodoroSettings',JSON.stringify({workTime:pomodoro.workTime,breakTime:pomodoro.breakTime,freeMode:pomodoro.freeMode}))}catch(e){}}
 function applyPomodoroSettings(){var wi=document.getElementById('pomo-work-min'),bi=document.getElementById('pomo-break-min'),fi=document.getElementById('pomo-free-mode');var w=wi?parseInt(wi.value,10):pomodoro.workTime;var b=bi?parseInt(bi.value,10):pomodoro.breakTime;if(!Number.isFinite(w)||w<1)w=1;if(!Number.isFinite(b)||b<0)b=0;pomodoro.workTime=Math.min(w,600);pomodoro.breakTime=Math.min(b,600);pomodoro.freeMode=!!(fi&&fi.checked);if(!pomodoro.isRunning){pomodoro.isBreak=false;pomodoro.remaining=pomodoro.workTime*60;}savePomodoroSettings();showToast('⏱️ Durée du minuteur mise à jour');render()}
-function startPomodoro(){if(pomodoro.isRunning)return;pomodoro.isRunning=true;if(pomodoro.remaining<=0)pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;pomodoro.timerId=setInterval(function(){pomodoro.remaining--;if(pomodoro.remaining<=0){pomodoro.remaining=0;clearInterval(pomodoro.timerId);pomodoro.isRunning=false;var wwFinishedWork=!pomodoro.isBreak;if(wwFinishedWork&&!pomodoro.freeMode)wwLogCompletedFocus();if(!pomodoro.freeMode){pomodoro.isBreak=!pomodoro.isBreak;pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;}if(navigator.vibrate)navigator.vibrate([200,100,200]);render()}render()},1000);render()}
-function pausePomodoro(){if(!pomodoro.isRunning)return;clearInterval(pomodoro.timerId);pomodoro.isRunning=false;render()}
-function stopPomodoro(){clearInterval(pomodoro.timerId);pomodoro.isRunning=false;pomodoro.isBreak=false;pomodoro.remaining=pomodoro.workTime*60;render()}
-function resetPomodoro(){stopPomodoro()}
+function startPomodoro(){if(pomodoro.isRunning)return;if(!pomodoro.isBreak){var fc=wwFocusContext();if((fc.type==='study'&&!fc.topic)||(fc.type==='task'&&!fc.task)||(fc.type!=='study'&&fc.type!=='task'&&!String(fc.title||'').trim())){showToast('⚠️ اربط نشاطًا بالـ Focus أولًا');return}if(!pomodoro.sessionStartedAt){pomodoro.sessionStartedAt=new Date().toISOString();pomodoro.workElapsedBeforePause=0}}pomodoro.isRunning=true;pomodoro.lastRunAt=Date.now();if(pomodoro.remaining<=0)pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60;pomodoro.timerId=setInterval(function(){pomodoro.remaining--;if(pomodoro.remaining<=0){pomodoro.remaining=0;clearInterval(pomodoro.timerId);pomodoro.isRunning=false;var done=!pomodoro.isBreak;if(done)wwLogCompletedFocus();pomodoro.sessionStartedAt=null;pomodoro.workElapsedBeforePause=0;pomodoro.lastRunAt=null;if(!pomodoro.freeMode){pomodoro.isBreak=!pomodoro.isBreak;pomodoro.remaining=pomodoro.isBreak?pomodoro.breakTime*60:pomodoro.workTime*60}if(navigator.vibrate)navigator.vibrate([200,100,200]);render();return}render()},1000);render()}
+function pausePomodoro(){if(!pomodoro.isRunning)return;if(!pomodoro.isBreak&&pomodoro.lastRunAt)pomodoro.workElapsedBeforePause+=Math.max(0,Math.round((Date.now()-pomodoro.lastRunAt)/1000));clearInterval(pomodoro.timerId);pomodoro.isRunning=false;pomodoro.lastRunAt=null;render()}
+function stopPomodoro(){if(pomodoro.isRunning&&!pomodoro.isBreak&&pomodoro.lastRunAt)pomodoro.workElapsedBeforePause+=Math.max(0,Math.round((Date.now()-pomodoro.lastRunAt)/1000));var elapsed=pomodoro.workElapsedBeforePause;if(pomodoro.isRunning)clearInterval(pomodoro.timerId);if(!pomodoro.isBreak&&elapsed>=60)wwRecordFocusActivitySession(Math.floor(elapsed/60),pomodoro.sessionStartedAt,'focus-stop');clearInterval(pomodoro.timerId);pomodoro.isRunning=false;pomodoro.isBreak=false;pomodoro.remaining=pomodoro.workTime*60;pomodoro.sessionStartedAt=null;pomodoro.workElapsedBeforePause=0;pomodoro.lastRunAt=null;render()}
+function resetPomodoro(){clearInterval(pomodoro.timerId);pomodoro.isRunning=false;pomodoro.isBreak=false;pomodoro.remaining=pomodoro.workTime*60;pomodoro.sessionStartedAt=null;pomodoro.workElapsedBeforePause=0;pomodoro.lastRunAt=null;render()}
 
 // ============================================================
 // WHITE WOLF V48 — PWA MOBILE EXPERIENCE
@@ -1605,7 +1631,7 @@ function attachAppEvents(){
   }
   if(window._wwFeatureControllers){window._wwFeatureControllers.bind(document.getElementById('root'));}
   document.querySelectorAll('.bottom-nav button').forEach(function(b){b.onclick=function(){if(this.dataset.route)navigate(this.dataset.route)}});
-  document.querySelectorAll('[data-route]').forEach(function(el){el.onclick=function(){var r=this.dataset.route;var p={};if(this.dataset.subjectId)p.subjectId=this.dataset.subjectId;if(this.dataset.langId)p.langId=this.dataset.langId;if(this.dataset.fcLang)p.fcLang=this.dataset.fcLang;if(r)navigate(r,p)}});
+  document.querySelectorAll('[data-route]').forEach(function(el){el.onclick=function(){var r=this.dataset.route;var p={};if(this.dataset.subjectId)p.subjectId=this.dataset.subjectId;if(this.dataset.langId)p.langId=this.dataset.langId;else if(this.dataset.lang)p.langId=this.dataset.lang;if(this.dataset.fcLang)p.fcLang=this.dataset.fcLang;if(r)navigate(r,p)}});
   document.querySelectorAll('[data-exam-prep]').forEach(function(el){el.onclick=function(e){e.stopPropagation();state.modal={type:'examPrep',examId:this.dataset.examPrep};render()}});
   document.querySelectorAll('[data-mission-done]').forEach(function(el){el.onclick=function(e){e.stopPropagation();var id=this.dataset.missionDone,d=this.dataset.done!=='1';wwSetMissionDone(id,d);if(d){state.xp+=5;showToast('🎯 Mission mise à jour · +5 XP')}saveState();render()}});
   document.querySelectorAll('[data-open-subject]').forEach(function(el){el.onclick=function(e){if(e.target.closest('[data-scope-subject]'))return;e.preventDefault();navigate('subject',{subjectId:this.dataset.openSubject})};el.onkeydown=function(e){if((e.key==='Enter'||e.key===' ')&&!e.target.closest('[data-scope-subject]')){e.preventDefault();navigate('subject',{subjectId:this.dataset.openSubject})}}});
@@ -1635,10 +1661,17 @@ function attachAppEvents(){
   document.querySelectorAll('[data-pomo-stop]').forEach(function(el){el.onclick=stopPomodoro});
   document.querySelectorAll('[data-pomo-reset]').forEach(function(el){el.onclick=resetPomodoro});
   document.querySelectorAll('[data-pomo-apply]').forEach(function(el){el.onclick=applyPomodoroSettings});
-  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var sel=document.getElementById('ww-focus-topic');wwSetFocusTopic(sel?sel.value:'')};
+  var focusType=document.querySelector('[data-focus-type]');if(focusType)focusType.onchange=function(){var type=this.value;state.focusContext=Object.assign({},wwFocusContext(),{type:type,subjectId:'',topicId:'',taskId:'',title:type==='study'||type==='task'?'':wwFocusContext().title});saveState();render()};
+  var focusSubject=document.querySelector('[data-focus-subject]');if(focusSubject)focusSubject.onchange=function(){var c=wwFocusContext();state.focusContext=Object.assign({},c,{subjectId:this.value||'',topicId:'',taskId:''});saveState();render()};
+  var focusApply=document.querySelector('[data-focus-apply]');if(focusApply)focusApply.onclick=function(){var c=wwFocusContext(),type=(document.getElementById('ww-focus-type')||{}).value||c.type,ctx={type:type,title:(document.getElementById('ww-focus-title')||{}).value||'',subjectId:(document.getElementById('ww-focus-subject')||{}).value||'',topicId:(document.getElementById('ww-focus-topic')||{}).value||'',taskId:(document.getElementById('ww-focus-task')||{}).value||'',notes:(document.getElementById('ww-focus-notes')||{}).value||''};wwSetFocusContext(ctx)};
+  var focusClear=document.querySelector('[data-focus-clear]');if(focusClear)focusClear.onclick=wwClearFocusContext;
+  document.querySelectorAll('[data-planning-view]').forEach(function(el){el.onclick=function(){var mode=this.dataset.planningView;try{localStorage.setItem('wwPlanningView',mode)}catch(e){}render()}});
   document.querySelectorAll('[data-emploi-mode]').forEach(function(el){el.onclick=function(){var mode=this.dataset.emploiMode;try{localStorage.setItem('wwEmploiMode',mode)}catch(e){}render()}});
+  document.querySelectorAll('[data-emploi-day]').forEach(function(el){el.onclick=function(){var day=this.dataset.emploiDay;try{localStorage.setItem('wwEmploiMode','day:'+day)}catch(e){}render()}});
   document.querySelectorAll('[data-emploi-course]').forEach(function(el){el.onclick=function(){state.modal={type:'emploiCourse',data:this.dataset.emploiCourse};render()}});
   document.querySelectorAll('[data-group-toggle]').forEach(function(el){el.onclick=function(){var b=document.getElementById('body-'+this.dataset.groupToggle);if(b)b.classList.toggle('open')}});
+  document.querySelectorAll('[data-adaptive-open-topic]').forEach(function(el){el.onclick=function(e){e.stopPropagation();var tid=this.dataset.adaptiveOpenTopic;if(tid)navigate('topic',{topicId:tid})}});
+  document.querySelectorAll('[data-ww-ados-accept]').forEach(function(el){el.onclick=function(e){e.stopPropagation();if(window.WWAdaptiveDailyOS&&window.WWAdaptiveDailyOS.accept){window.WWAdaptiveDailyOS.accept(this.dataset.wwAdosAccept,this.dataset.start,this.dataset.end)}}});
   document.querySelectorAll('[data-stats-tab]').forEach(function(el){el.onclick=function(){state.statsTab=this.dataset.statsTab;if(this.dataset.statsTab!=='adaptive')state.adaptiveRevision=null;state.reviewSession=null;render()}});
   document.querySelectorAll('[data-start-adaptive-session]').forEach(function(el){el.onclick=function(){wwStartAdaptiveRevision()}});
   document.querySelectorAll('[data-adaptive-answer]').forEach(function(el){el.onclick=function(){wwAdaptiveAnswer(this.dataset.adaptiveAnswer==='yes')}});
@@ -1666,6 +1699,8 @@ function attachAppEvents(){
 
   // Task create/done/delete are owned by the Feature Controller to avoid duplicate handlers.
   document.querySelectorAll('[data-add-task]').forEach(function(el){el.onclick=function(){state.modal={type:'task'};render()}});
+  var taskSubjectSelect=document.getElementById('task-subject'),taskTopicSelect=document.getElementById('task-topic');
+  if(taskSubjectSelect&&taskTopicSelect){taskSubjectSelect.onchange=function(){var sid=this.value;Array.from(taskTopicSelect.options).forEach(function(o){if(!o.value){o.hidden=false;return}o.hidden=!!sid&&o.getAttribute('data-topic-subject')!==sid;});if(taskTopicSelect.value&&taskTopicSelect.options[taskTopicSelect.selectedIndex]&&taskTopicSelect.options[taskTopicSelect.selectedIndex].hidden)taskTopicSelect.value='';};taskSubjectSelect.onchange();}
   document.querySelectorAll('[data-save-task]').forEach(function(el){el.onclick=async function(){
     var text=String((document.getElementById('task-text')||{}).value||'').trim();
     var date=(document.getElementById('task-date')||{}).value||wwLocalDateISO(new Date());
@@ -1723,13 +1758,13 @@ function attachAppEvents(){
 var saveStateQueue=Promise.resolve();
 async function saveState(){
   if(window.WWEventBus)WWEventBus.emit('state:save:start',{route:state.route});
-  var snapshot={subjects:state.subjects,topics:state.topics,sessions:state.sessions,tasks:state.tasks,mastery:state.mastery,errors:state.errors,exams:state.exams,resources:state.resources,progress:state.progress,programming:state.programming,languages:state.languages,langDone:state.langDone,flashcards:state.flashcards,fcReview:state.fcReview,ignoredTopics:state.ignoredTopics,settings:state.settings,onboardingDone:state.onboardingDone,onboardingData:state.onboardingData,xp:state.xp,studyStreak:state.studyStreak,lastStudyDate:state.lastStudyDate,quranTab:state.quranTab,quranSurahs:state.quranSurahs,quranJuz:state.quranJuz,quranKhatmas:state.quranKhatmas,quranCurrentKhatmaId:state.quranCurrentKhatmaId,adaptiveRevision:state.adaptiveRevision,dailyOS:state.dailyOS||{accepted:[]},adaptiveQuestionStats:state.adaptiveQuestionStats,adaptiveCustomQuestions:state.adaptiveCustomQuestions,studyScope:state.studyScope,documentIntelligence:state.documentIntelligence,resourceIntelligence:state.resourceIntelligence,customSchedule:state.customSchedule,personalEvents:state.personalEvents||[]};
+  var snapshot={subjects:state.subjects,topics:state.topics,sessions:state.sessions,tasks:state.tasks,mastery:state.mastery,errors:state.errors,exams:state.exams,resources:state.resources,activities:state.activities||[],progress:state.progress,programming:state.programming,languages:state.languages,langDone:state.langDone,flashcards:state.flashcards,fcReview:state.fcReview,ignoredTopics:state.ignoredTopics,settings:state.settings,onboardingDone:state.onboardingDone,onboardingData:state.onboardingData,xp:state.xp,studyStreak:state.studyStreak,lastStudyDate:state.lastStudyDate,quranTab:state.quranTab,quranSurahs:state.quranSurahs,quranJuz:state.quranJuz,quranKhatmas:state.quranKhatmas,quranCurrentKhatmaId:state.quranCurrentKhatmaId,adaptiveRevision:state.adaptiveRevision,dailyOS:state.dailyOS||{accepted:[]},adaptiveQuestionStats:state.adaptiveQuestionStats,adaptiveCustomQuestions:state.adaptiveCustomQuestions,focusContext:state.focusContext,focusSessions:state.focusSessions||[],studyScope:state.studyScope,documentIntelligence:state.documentIntelligence,resourceIntelligence:state.resourceIntelligence,customSchedule:state.customSchedule,personalEvents:state.personalEvents||[]};
   saveStateQueue=saveStateQueue.then(async function(){if(window.WWAcademicProjectionV68&&window.__WW_ACADEMIC_OS_PRIMARY){await window.WWAcademicProjectionV68.reconcile(state)}return dbSet('appState',snapshot)}).catch(function(e){console.warn('saveState error',e)});
   var queued=saveStateQueue.then(function(){if(window.WWEventBus)WWEventBus.emit('state:save:complete',{route:state.route})});
   return queued;
 }
 
-async function loadState(){try{var data=await dbGet('appState');if(data){state.subjects=data.subjects||MASTER_SUBJECTS;state.topics=data.topics||TOPICS_SEED;state.progress=data.progress||{};state.mastery=data.mastery||{};state.sessions=data.sessions||[];state.errors=data.errors||[];state.programming=data.programming||{};state.languages=data.languages||JSON.parse(JSON.stringify(LANGUAGES));state.langDone=data.langDone||{};state.flashcards=data.flashcards||{};var latestEn=LANGUAGES.find(function(x){return x.id==='en'});var existingEn=state.languages.find(function(x){return x.id==='en'});if(latestEn){if(existingEn){var ei=state.languages.indexOf(existingEn);state.languages[ei]=JSON.parse(JSON.stringify(latestEn))}else{state.languages.push(JSON.parse(JSON.stringify(latestEn)))}}if(state.flashcards&&state.flashcards.en){state.flashcards.en=state.flashcards.en.filter(function(c){return !c.auto||!!(state.languages.find(function(x){return x.id==='en'}).levels[c.level])})}state.fcReview=data.fcReview||{};state.tasks=Array.isArray(data.tasks)?data.tasks:[];state.tasks.forEach(function(t){if(t.deadlineTime===undefined)t.deadlineTime='';if(!t.status)t.status=t.isDone?'done':'todo';if(!(Number(t.estimatedMinutes)>0))t.estimatedMinutes=(t.time&&t.deadlineTime)?Math.max(0,wwScheduleToMinutes(t.deadlineTime)-wwScheduleToMinutes(t.time)):30});state.exams=data.exams||[];state.resources=data.resources||{};wwNormalizeResourceState();state.ignoredTopics=data.ignoredTopics||{};state.settings=data.settings||{showSmartRevision:true};state.settings.timeConstraints=Object.assign({sleepStart:'23:00',wakeTime:'05:00'},state.settings.timeConstraints||{});state.settings.notifications=Object.assign({enabled:false,leadMinutes:10,taskDeadlines:true,studySessions:true,revision:true,morning:true,evening:true},state.settings.notifications||{});state.onboardingDone=data.onboardingDone||false;state.onboardingData=data.onboardingData||{name:'',goal:'',studyTime:''};state.customSchedule=data.customSchedule||{};state.personalEvents=Array.isArray(data.personalEvents)?data.personalEvents:[];state.xp=data.xp||0;state.studyStreak=data.studyStreak||0;state.lastStudyDate=data.lastStudyDate||null;state.quranTab=data.quranTab||'surahs';state.quranSurahs=Array.isArray(data.quranSurahs)?data.quranSurahs:wwQuranDefaultSurahs();state.quranJuz=Array.isArray(data.quranJuz)?data.quranJuz:wwQuranDefaultJuz();state.quranKhatmas=Array.isArray(data.quranKhatmas)?data.quranKhatmas:[];state.quranCurrentKhatmaId=data.quranCurrentKhatmaId||null;state.adaptiveRevision=data.adaptiveRevision||null;state.dailyOS=data.dailyOS&&Array.isArray(data.dailyOS.accepted)?{accepted:data.dailyOS.accepted}: {accepted:[]};state.adaptiveQuestionStats=data.adaptiveQuestionStats||{};state.adaptiveCustomQuestions=data.adaptiveCustomQuestions||{};state.studyScope=data.studyScope||{subjects:{},topics:{}};state.documentIntelligence=data.documentIntelligence||{resources:{},activeResourceId:null};state.resourceIntelligence=data.resourceIntelligence||{version:'65.33'};wwEnsureStudyScope();wwQuranEnsureData()}if(window.WWAcademicOSCutover&&window.WWAcademicOSCutover.boot){try{await window.WWAcademicOSCutover.boot(state)}catch(e){console.warn('Academic OS cutover load bridge skipped',e)}}if(window.WWMastery)window.WWMastery.syncState(state);}catch(e){console.warn('Load error',e);state.subjects=MASTER_SUBJECTS;state.topics=TOPICS_SEED;state.resources={};state.languages=JSON.parse(JSON.stringify(LANGUAGES));}}
+async function loadState(){try{var data=await dbGet('appState');if(data){state.subjects=data.subjects||MASTER_SUBJECTS;state.topics=data.topics||TOPICS_SEED;state.progress=data.progress||{};state.mastery=data.mastery||{};state.sessions=data.sessions||[];state.errors=data.errors||[];state.programming=data.programming||{};state.languages=data.languages||JSON.parse(JSON.stringify(LANGUAGES));state.langDone=data.langDone||{};state.flashcards=data.flashcards||{};var latestEn=LANGUAGES.find(function(x){return x.id==='en'});var existingEn=state.languages.find(function(x){return x.id==='en'});if(latestEn){if(existingEn){var ei=state.languages.indexOf(existingEn);state.languages[ei]=JSON.parse(JSON.stringify(latestEn))}else{state.languages.push(JSON.parse(JSON.stringify(latestEn)))}}if(state.flashcards&&state.flashcards.en){state.flashcards.en=state.flashcards.en.filter(function(c){return !c.auto||!!(state.languages.find(function(x){return x.id==='en'}).levels[c.level])})}state.fcReview=data.fcReview||{};state.tasks=Array.isArray(data.tasks)?data.tasks:[];state.tasks.forEach(function(t){if(t.deadlineTime===undefined)t.deadlineTime='';if(!t.status)t.status=t.isDone?'done':'todo';if(!(Number(t.estimatedMinutes)>0))t.estimatedMinutes=(t.time&&t.deadlineTime)?Math.max(0,wwScheduleToMinutes(t.deadlineTime)-wwScheduleToMinutes(t.time)):30});state.exams=data.exams||[];state.resources=data.resources||{};wwNormalizeResourceState();state.ignoredTopics=data.ignoredTopics||{};state.settings=data.settings||{showSmartRevision:true};state.settings.timeConstraints=Object.assign({sleepStart:'23:00',wakeTime:'05:00'},state.settings.timeConstraints||{});state.settings.notifications=Object.assign({enabled:false,leadMinutes:10,taskDeadlines:true,studySessions:true,revision:true,morning:true,evening:true},state.settings.notifications||{});state.onboardingDone=data.onboardingDone||false;state.onboardingData=data.onboardingData||{name:'',goal:'',studyTime:''};state.customSchedule=data.customSchedule||{};state.personalEvents=Array.isArray(data.personalEvents)?data.personalEvents:[];state.xp=data.xp||0;state.studyStreak=data.studyStreak||0;state.lastStudyDate=data.lastStudyDate||null;state.quranTab=data.quranTab||'surahs';state.quranSurahs=Array.isArray(data.quranSurahs)?data.quranSurahs:wwQuranDefaultSurahs();state.quranJuz=Array.isArray(data.quranJuz)?data.quranJuz:wwQuranDefaultJuz();state.quranKhatmas=Array.isArray(data.quranKhatmas)?data.quranKhatmas:[];state.quranCurrentKhatmaId=data.quranCurrentKhatmaId||null;state.adaptiveRevision=data.adaptiveRevision||null;state.dailyOS=data.dailyOS&&Array.isArray(data.dailyOS.accepted)?{accepted:data.dailyOS.accepted}: {accepted:[]};state.adaptiveQuestionStats=data.adaptiveQuestionStats||{};state.adaptiveCustomQuestions=data.adaptiveCustomQuestions||{};state.focusContext=data.focusContext||{type:'study',title:'',subjectId:'',topicId:'',taskId:'',notes:''};state.focusSessions=Array.isArray(data.focusSessions)?data.focusSessions:[];state.activities=Array.isArray(data.activities)?data.activities:[];state.studyScope=data.studyScope||{subjects:{},topics:{}};state.documentIntelligence=data.documentIntelligence||{resources:{},activeResourceId:null};state.resourceIntelligence=data.resourceIntelligence||{version:'65.33'};wwEnsureStudyScope();wwQuranEnsureData()}if(window.WWAcademicOSCutover&&window.WWAcademicOSCutover.boot){try{await window.WWAcademicOSCutover.boot(state)}catch(e){console.warn('Academic OS cutover load bridge skipped',e)}}if(window.WWMastery)window.WWMastery.syncState(state);}catch(e){console.warn('Load error',e);state.subjects=MASTER_SUBJECTS;state.topics=TOPICS_SEED;state.resources={};state.languages=JSON.parse(JSON.stringify(LANGUAGES));}}
 
 
 setInterval(function(){if(state.route==='emploi'&&state.onboardingDone){render()}},15000);
@@ -1798,8 +1833,8 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'64.3',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:67.0,schemaVersion:4};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'93.10',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:93.10,schemaVersion:4};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
 window.WWAdaptiveAPI={summary:wwAdaptiveSummary,build:function(limit){return window.WWAdaptiveRevision?window.WWAdaptiveRevision.build(state,limit):[]},start:wwStartAdaptiveRevision,answer:wwAdaptiveAnswer};
 window.WWResourceAPI={
