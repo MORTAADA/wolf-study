@@ -1833,8 +1833,8 @@ setTimeout(function(){
 
 // Public bridge for extension modules (V43/V44/V45/V46) without leaking app internals.
 window.WWV46App={state:state,navigate:navigate,langCurrentLevel:langCurrentLevel};
-window.WWAppCore={state:state,render:render,navigate:navigate,version:'93.10',events:window.WWEventBus,renderer:window.WWRenderer};
-window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:93.10,schemaVersion:4};
+window.WWAppCore={state:state,render:render,navigate:navigate,version:'93.11',events:window.WWEventBus,renderer:window.WWRenderer};
+window.WWPersistence={save:saveState,load:loadState,dbName:DB_NAME,version:93.11,schemaVersion:4};
 window.WWV47Dashboard={getUpcomingExams:getUpcomingExamsForDashboard};
 window.WWAdaptiveAPI={summary:wwAdaptiveSummary,build:function(limit){return window.WWAdaptiveRevision?window.WWAdaptiveRevision.build(state,limit):[]},start:wwStartAdaptiveRevision,answer:wwAdaptiveAnswer};
 window.WWResourceAPI={

@@ -1930,7 +1930,7 @@ button, [role="button"], input, select, textarea { touch-action: manipulation; }
   .ww-plan-summary b{font-size:12px}
 }
 
-/* V93.10 QA FIX — restore visible timer + full Planning Intelligence */
+/* V93.11 QA FIX — restore visible timer + full Planning Intelligence */
 .ww-pomodoro-v2{margin-top:12px;text-align:center;padding:12px;border:1px solid #1b2a3d;border-radius:14px;background:#0d1722}
 .ww-pomo-head{display:flex;justify-content:space-between;align-items:flex-start;text-align:left;gap:10px}
 .ww-pomo-phase{font-size:9px;letter-spacing:1.4px;color:#6683a5;font-weight:800;margin-top:3px}
