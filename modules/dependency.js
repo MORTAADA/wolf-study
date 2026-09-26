@@ -16,7 +16,7 @@
       controllers:S.controllers?S.controllers():(window.WWFeatureControllers||null)
     };
     container.ready=!!(container.persistence&&container.events&&container.state&&container.router&&container.renderer);
-    container.version='93.10';
+    container.version='93.11';
     return container;
   }
   window.WWDI={create:create,version:'65.26'};
